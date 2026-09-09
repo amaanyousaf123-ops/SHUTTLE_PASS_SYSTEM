@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commander City Shuttle System — Monthly Card Management</title>
+    <meta name="description" content="Monthly shuttle pass card renewal system with auto serial numbers and bulk renewal">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- SheetJS for Excel (.xlsx / .csv) parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- QRCode library for Mobile App LAN pairing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="logo.png" alt="Commander City Logo" style="max-height: 40px;" />
+                <div class="logo-text" style="font-size: 1.2rem;">Commander<span>City</span></div>
+            </div>
+            <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="nav" id="mainNav">
+            <div class="nav-section">Dashboard</div>
+            <a class="nav-item active" data-view="passes">
+                <i class="fas fa-id-card"></i><span>Monthly Passes</span>
+            </a>
+            <a class="nav-item" data-view="members">
+                <i class="fas fa-users"></i><span>Members Directory</span>
+            </a>
+            <div class="nav-section">Operations</div>
+            <a class="nav-item" data-view="renewal">
+                <i class="fas fa-sync-alt"></i><span>Bulk Renewal</span>
+            </a>
+            <a class="nav-item" data-view="history">
+                <i class="fas fa-history"></i><span>Renewal History</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:8px">
+            <button id="mobileQrBtn" class="btn-seed" style="background:rgba(168,85,247,0.15);color:#c084fc;border-color:rgba(168,85,247,0.3);font-weight:700">
+                <i class="fas fa-qrcode"></i><span>Manager Mobile App QR</span>
+            </button>
+            <button id="exportCardsBtn" class="btn-seed" style="background:rgba(16,185,129,0.15);color:var(--green);border-color:rgba(16,185,129,0.3)">
+                <i class="fas fa-sync-alt"></i><span>Force Sync Data to Folder</span>
+            </button>
+            <button id="googleSyncBtn" class="btn-seed" style="background:rgba(59,130,246,0.15);color:var(--accent);border-color:rgba(59,130,246,0.3);font-weight:700">
+                <i class="fab fa-google-drive"></i><span>Google Sheets Settings</span>
+            </button>
+        </div>
+
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main" id="main">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 class="page-title" id="pageTitle">Monthly Passes</h2>
+            </div>
+            <div class="topbar-right">
+                <button id="topbarQrBtn" class="btn btn-sm" style="background:rgba(168,85,247,0.2);color:#c084fc;border:1px solid rgba(168,85,247,0.4);font-weight:700;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px">
+                    <i class="fas fa-qrcode"></i><span>Manager Mobile App</span>
+                </button>
+                <div class="topbar-date" id="topbarDate"></div>
+                <div class="sync-badge" id="syncBadge" title="Data sync status">
+                    <span class="sync-dot sync-idle"></span>
+                    <span class="sync-label" id="syncLabel">Synced</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="content" id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading Shuttle Pass System...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle"></h3>
+                <button class="modal-close-btn" id="modalCloseBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

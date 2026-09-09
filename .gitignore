@@ -1,0 +1,25 @@
+# Customer data - DO NOT COMMIT
+imported_members.json
+data/
+
+# Customer / employee photos
+pass_photos/
+photos/
+PICTURES OF EMLOYEES/
+
+# Quotations and business documents (contain customer info)
+*.docx
+
+# Browser-saved page snapshot (may contain serialized data)
+Shuttle Pass Renewal System - Monthly Card Management.html
+Shuttle Pass Renewal System - Monthly Card Management_files/
+Shuttle Pass Renewal System — Monthly Card Management.html
+Shuttle Pass Renewal System — Monthly Card Management_files/
+
+# Executables and shortcuts
+node.exe
+*.exe
+*.lnk
+
+# Local startup scripts
+START.lnk
