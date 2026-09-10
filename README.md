@@ -1,193 +1,245 @@
-# 🚌 Shuttle Pass Renewal System — Commander City
+<div align="center">
 
-A standalone web application for managing monthly shuttle pass cards at **Commander City**. It issues monthly passes with auto-generated serial numbers, performs one-click bulk monthly renewals, tracks members and payments, prints pass cards, and syncs manager-approved data to Google Sheets.
+# Shuttle Pass Renewal System
 
-Runs entirely on your local network — no cloud database required.
+**A full-stack web application built for Commander City Housing Society to digitize monthly shuttle pass management, replace manual Excel tracking, and enable remote manager verification over LAN.**
 
----
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![PWA](https://img.shields.io/badge/PWA-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://web.dev/pwa/)
+[![Google Sheets](https://img.shields.io/badge/Google%20Sheets-34A853?style=for-the-badge&logo=google-sheets&logoColor=white)](https://sheets.google.com)
 
-## ✨ Features
-
-### 🎫 Monthly Card Management
-- Create, edit, search, and print shuttle passes.
-- Auto-formatted monthly serial numbers: `SP-YYYY-MM-001`, `SP-YYYY-MM-002`, …
-- Pass types (Full / Half) with configurable monthly amounts.
-- Card states: `active`, `on_hold`, paused/archived, etc.
-
-### 👥 Members Directory
-- Full member profiles: name, CNIC, house/plot number, contact, route, vehicle number, and photo.
-- Import members in bulk from Excel (`.xlsx` / `.csv`), including the **"Import August Serial List"** tool which maps your Excel columns and either assigns serials to existing members or auto-creates new ones.
-
-### 🔄 One-Click Bulk Renewal
-- Renew all active members into the next month cycle with new serial numbers and valid date ranges in a single click.
-- Full **Renewal History** view for audit trails.
-
-### 🖨️ Print Support
-- Print single pass cards immediately after issue.
-- Batch print sheets for an entire month's passes.
-
-### 📱 Manager Mobile Verification App
-- Companion mobile web app (`mobile.html`) served over your LAN.
-- Paired to the desktop app via QR code (auto-generated URL).
-- Manager login, real-time **pending pass queue**, approve / hold / bulk-verify passes while the desktop app updates instantly over Server-Sent Events.
-- Add to home screen / installable via PWA `manifest.json`.
-
-### 📊 Google Sheets Auto-Sync
-- One-way auto-sync of **manager-verified** passes and members to Google Sheets via a webhook (Apps Script).
-- Test connection and enable/disable sync from the UI. See [GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md).
-
-### 💾 Reliable Local Persistence
-- Browser **IndexedDB** front-end cache for instant UI.
-- Background sync to JSON on disk (`data/system_state.json`, plus `members.json`, `passes.json`, `payments.json`, `history.json`).
-- **Automatic versioned snapshots** every ~5 minutes (or force-sync with a button).
-- **Monthly CSV registers** auto-generated for Excel (`Shuttle_Passes_January_2026.csv`, etc.) with totals and per-pass rows.
-
-### 📡 Real-Time Sync
-- Server-Sent Events (SSE) push card approvals from the Manager mobile app to all open desktop clients instantly.
-- A "sync guard" ensures manager approvals on the server can never be overwritten by a stale browser tab.
+</div>
 
 ---
 
-## 🏗️ Architecture
+## Client Overview
+
+| | |
+|---|---|
+| **Client** | Commander City Housing Society |
+| **Industry** | Residential Community Management |
+| **Role** | Full-Stack Developer (End-to-End Delivery) |
+| **Status** | Deployed on local network |
+
+---
+
+## The Problem
+
+Commander City manages monthly shuttle passes for hundreds of residents. Their existing workflow was entirely **manual and paper-based**:
+
+- Passes tracked in Excel spreadsheets with no central system
+- Serial numbers assigned manually, causing duplicates and confusion
+- Manager had to physically inspect each pass card before approving it
+- No way to verify passes remotely — manager had to be at the desk
+- Monthly renewals required recreating every pass from scratch
+- No audit trail for payments or pass issuance history
+- No integration with their existing Google Sheets tracking
+
+The result was **wasted hours every month**, frequent data entry errors, and no reliable record of who held a valid pass.
+
+---
+
+## The Solution
+
+A **complete web-based shuttle pass management system** that runs entirely on the client's local network — no cloud database, no recurring costs, no data leaving their premises.
+
+---
+
+## Screenshots
+
+### Desktop Dashboard
+
+The main dashboard displays all pass cards in a responsive grid with 12 distinct monthly color themes. Each card shows the resident's name, CNIC, house number, serial badge, photo, and validity dates. Includes real-time sync status, search, filtering, and batch operations.
+
+<div align="center">
+  <img src="screenshots/dashboard.png" alt="Desktop Dashboard — Monthly Passes View" width="85%">
+  <br>
+  <em>Desktop Dashboard — Monthly pass cards with dark theme UI, sidebar navigation, and sync status</em>
+</div>
+
+<br>
+
+### Manager Mobile Verification App
+
+A companion PWA served over LAN. The manager scans a QR code on their phone to access a real-time queue of pending passes. Each card shows the resident photo, details, and amount — with approve/hold buttons for instant verification. Approvals push to the desktop dashboard in real-time via Server-Sent Events.
+
+<div align="center">
+  <img src="screenshots/mobile-login.png" alt="Manager Mobile App — Login Screen" width="35%">
+  <br>
+  <em>Manager Mobile App — Login screen with LAN connection status</em>
+</div>
+
+<br>
+
+### Monthly Pass Card Design
+
+Pass cards are designed to the **standard CNIC physical dimension** (85.6mm × 54mm) for direct printing on card stock. Each month has a unique color theme (12 total), with member photo, serial badge, house number, and validity period — ready for batch printing.
+
+---
+
+## Key Features
+
+| Module | Description |
+|--------|-------------|
+| **Monthly Pass Dashboard** | Card-based view with 12 monthly color themes, search, filtering, and batch operations |
+| **Members Directory** | Full resident profiles with photo, CNIC, house/plot, contact — importable from Excel |
+| **One-Click Bulk Renewal** | Renews all active passes to next month with auto-generated sequential serial numbers |
+| **Manager Mobile Verification** | PWA companion app — QR-paired, approve/reject passes from phone over LAN |
+| **Google Sheets Auto-Sync** | Verified passes sync to Google Sheets via Apps Script webhook |
+| **Print-Ready Pass Cards** | CNIC-standard cards (85.6mm × 54mm) with member photo, serial badge, monthly theme |
+| **Auto CSV Registers** | Monthly Excel-ready registers with totals, generated in background |
+| **Real-Time Desktop Sync** | SSE pushes manager approvals from phone to all open desktop screens instantly |
+
+---
+
+## Architecture
 
 ```
-┌───────────────────────┐      HTTP / JSON       ┌──────────────────────────────┐
-│  Desktop (index.html) │ ─────────────────────▶ │  Node.js Host Server         │
-│  - Monthly Passes     │ ◀───────────────────── │  server.js :3000             │
-│  - Members Directory  │   /api/sync            │  - serves static files       │
-│  - Bulk Renewal       │   /api/system-state    │  - writes JSON to data/      │
-│  - History            │   /api/events (SSE)    │  - auto CSV registers        │
-└───────────────────────┘                        │  - Google Sheets webhook     │
-        ▲                                        └──────────────┬───────────────┘
-        │ IndexedDB (offline cache)                            │
-        │                                        ┌──────────────▼───────────────┐
-┌───────────────────────┐    LAN (same Wi-Fi)    │  Manager Mobile App          │
-│  mobile.html          │ ─────────────────────▶ │  - login → pending queue     │
-│  (phone/tablet)       │   /api/login           │  - approve / hold / bulk OK  │
-│  PWA installable      │   /api/pending-passes  │  - real-time via SSE         │
-└───────────────────────┘   /api/approve-pass    └──────────────────────────────┘
+┌───────────────────────────┐      HTTP / JSON       ┌──────────────────────────────┐
+│  Desktop Dashboard        │ ─────────────────────▶ │  Node.js Host Server         │
+│  (index.html)             │ ◀───────────────────── │  server.js :3000             │
+│  • Monthly Passes         │   /api/sync            │  • Serves static files       │
+│  • Members Directory      │   /api/system-state    │  • Writes JSON to data/      │
+│  • Bulk Renewal           │   /api/events (SSE)    │  • Auto CSV registers        │
+│  • History & Reporting    │                        │  • Google Sheets webhook     │
+└───────────────────────────┘                        └──────────────┬───────────────┘
+        ▲                                                          │
+        │ IndexedDB (offline cache)                     ┌───────────▼───────────────┐
+┌───────────────────────┐    LAN (same Wi-Fi)           │  Manager Mobile App       │
+│  Manager Mobile App   │ ─────────────────────────▶   │  • Login + pending queue   │
+│  (mobile.html / PWA)  │   /api/login                 │  • Approve / Hold / Bulk   │
+│  PWA installable      │   /api/pending-passes        │  • Real-time via SSE       │
+└───────────────────────┘   /api/approve-pass          └───────────────────────────┘
 ```
 
-- **Front end**: Vanilla JS (no framework), CSS, Font Awesome icons, SheetJS (Excel parsing), QRCode.js (LAN pairing).
-- **Back end**: Node.js standard library only (`http`, `fs`, `path`, `os`) — no npm dependencies.
-- **Storage**: Browser IndexedDB + local JSON files. Uploaded to GitHub for public reference **without any customer data**.
+**Design Decisions:**
+- **Zero npm dependencies** — server uses only Node.js built-in modules (`http`, `fs`, `path`, `os`)
+- **Browser-first data** — IndexedDB provides instant UI with background sync to disk
+- **Server wins on verification** — sync guard prevents stale tabs from overwriting manager approvals
+- **Local-only by design** — no data leaves the network unless Google Sheets sync is enabled
 
 ---
 
-## 🚀 Getting Started
+## Tech Stack
 
-### Option A — Windows (recommended)
-1. Place the folder anywhere (e.g. Desktop).
-2. Double-click **`START.bat`**.
-3. The app starts at `http://localhost:3000` and opens in your browser automatically.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vanilla JavaScript, CSS3, Font Awesome 6, Inter font |
+| Backend | Node.js (zero dependencies — stdlib only) |
+| Data Layer | Browser IndexedDB + local JSON files |
+| Excel Parsing | SheetJS (xlsx) |
+| QR Code | QRCode.js (LAN pairing) |
+| Real-Time | Server-Sent Events (SSE) |
+| Mobile | PWA with `manifest.json` |
+| Cloud Sync | Google Apps Script → Google Sheets |
 
-### Option B — Manual with Node.js
-1. Install [Node.js](https://nodejs.org) (any modern LTS).
-2. Open a terminal in the project folder.
-3. Run:
+---
 
+## Key Features in Detail
+
+### Smart Serial Number Management
+Passes use auto-incrementing serial numbers scoped per month (`01`, `02`, `03`...), ensuring no duplicates. Supports both auto-assignment and manual serial selection.
+
+### Fee Schedule System
+Configurable fee rules that change over time — the system applies the correct rate based on pass month/year:
+
+```javascript
+// Fee increase from September 2026
+{ startYear: 2026, startMonth: 9, fullAmount: 8000, halfAmount: 4000 }
+{ startYear: 2026, startMonth: 1, fullAmount: 6000, halfAmount: 3000 }
+```
+
+### Manager Verification Workflow
+Every new pass starts as `verified: false`. The manager opens the mobile app, sees a live queue with member photos and details, and approves or holds each one. The desktop updates in real-time via SSE — no refresh needed.
+
+### Data Safety
+- Auto-versioned snapshots every 5 minutes (with force-sync button)
+- Sync guard prevents stale browser tabs from overwriting server-verified approvals
+- Full audit trail with `verifiedBy`, `verifiedAt` timestamps
+
+---
+
+## Getting Started
+
+### Quick Start (Windows)
+1. Place the folder anywhere
+2. Double-click `START.bat`
+3. App opens at `http://localhost:3000`
+
+### Manual Start
 ```bash
 node server.js
+# → http://localhost:3000
+# → Manager Mobile: http://YOUR_LAN_IP:3000/mobile.html
 ```
 
-4. Open `http://localhost:3000`.
+### Default Manager Login
 
-### Access on your local network
-- Desktop UI: `http://localhost:3000` (or `http://YOUR_LAN_IP:3000`).
-- Manager Mobile App: open the **"Manager Mobile App QR"** button in the sidebar/top bar and scan it with your phone on the same Wi-Fi — or navigate directly to `http://YOUR_LAN_IP:3000/mobile.html`.
-- The server prints all LAN IPs on startup.
-
-### Default Manager Login (mobile app / admin)
-| Field | Default |
-|-------|---------|
-| Username | `admin` (also accepts `manager` / `admin123` password) |
+| Field | Value |
+|-------|-------|
+| Username | `admin` |
 | Password | `admin123` |
 
-> Change the password from the mobile app's password screen, or by creating `data/manager_config.json` with `{ "username": "...", "password": "..." }`.
+> Change via the mobile app's password screen or by creating `data/manager_config.json`.
 
 ---
 
-## 📡 API Endpoints
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/api/system-state` | Full system state (members, passes, payments, history) |
-| `GET` | `/api/system-info` | Port + LAN IPs + mobile URL |
-| `GET` | `/api/events` | Server-Sent Events stream (real-time updates) |
-| `POST` | `/api/login` | Manager login for the mobile app |
-| `POST` | `/api/change-manager-password` | Change manager password (manager only) |
-| `GET` | `/api/pending-passes` | Passes awaiting manager verification |
-| `POST` | `/api/approve-pass` | Approve a single pass |
-| `POST` | `/api/reject-pass` | Hold/reject a pass with a reason |
-| `POST` | `/api/verify-all` | Bulk-verify all pending passes |
-| `POST` | `/api/sync` | Save/merge full state; server always wins on verified flags |
-| `GET`/`POST` | `/api/google-config` | Read/update Google Sheets webhook config |
-| `POST` | `/api/test-google-sync` | Send a test connection payload to the webhook |
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 shuttle-pass-system/
-├── index.html            # Desktop main app (dashboard, passes, members, renewal)
-├── admin.html            # Redirect shim to the manager admin panel
-├── mobile.html           # Manager Mobile Verification App (PWA)
-├── server.js             # Node.js host server (API + static files + CSV/Sheets sync)
-├── manifest.json         # PWA manifest for the mobile app
-├── START.bat             # One-click Windows launcher
+├── index.html                 # Desktop main app
+├── mobile.html                # Manager Mobile Verification App (PWA)
+├── server.js                  # Node.js server (API + static + CSV sync)
+├── manifest.json              # PWA manifest for mobile install
+├── START.bat                  # One-click Windows launcher
+├── screenshots/               # Application screenshots for documentation
 ├── css/
-│   ├── styles.css        # Desktop UI styles
-│   └── mobile.css        # Mobile app styles
+│   ├── styles.css             # Desktop UI (dark theme, 12 card designs)
+│   └── mobile.css             # Mobile app styles
 ├── js/
-│   ├── db.js             # IndexedDB layer, seed data, host sync polling
-│   ├── app.js            # Desktop app controller (UI logic, imports, printing)
-│   └── mobile.js         # Mobile app controller
+│   ├── db.js                  # IndexedDB layer, sync, SSE listener
+│   ├── app.js                 # Desktop app controller
+│   └── mobile.js              # Mobile verification controller
 └── scripts/
-    ├── google_apps_script.js    # Paste into Google Apps Script (see GOOGLE_SHEETS_SETUP.md)
-    ├── create_quotation.py      # DOCX quotation generator
-    ├── create_quotation_pure.py # Quotation generator (pure python-docx)
-    ├── extract_d_shuttle_pass.ps1  # Extract member data from Word pass docs
-    └── create_shortcuts.ps1     # Create desktop shortcuts
+    └── google_apps_script.js  # Google Sheets Apps Script (paste into Sheets)
 ```
 
 ---
 
-## 🔒 Privacy & Customer Data
+## API Endpoints
 
-This repository intentionally **excludes all customer data**:
-
-- `.gitignore` blocks `data/` (members, passes, payments, history, backups, exports, Google webhook config), photo directories, imported member JSON, quotation documents, and executables.
-- Only application source code is published.
-
-At runtime, all data stays on your own machine/network.
-
----
-
-## 📊 Google Sheets Sync
-
-See [GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md) for step-by-step setup:
-
-1. Open/Create your Google Sheet → **Extensions → Apps Script**.
-2. Paste the contents of `scripts/google_apps_script.js`.
-3. **Deploy → New deployment → Web app** (Execute as: *Me*, Access: *Anyone*).
-4. Copy the `/exec` URL into **Google Sheets Settings** in the app, enable sync, and click **Test Sync Connection**.
-
-Only passes marked **verified by the manager** are synced (photos stripped from the payload).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/system-state` | Full system state |
+| `GET` | `/api/system-info` | Server info + LAN IPs |
+| `GET` | `/api/events` | SSE stream (real-time updates) |
+| `POST` | `/api/login` | Manager authentication |
+| `POST` | `/api/change-manager-password` | Password change |
+| `GET` | `/api/pending-passes` | Passes awaiting verification |
+| `POST` | `/api/approve-pass` | Approve a single pass |
+| `POST` | `/api/reject-pass` | Hold/reject a pass |
+| `POST` | `/api/verify-all` | Bulk-verify all pending |
+| `POST` | `/api/sync` | Save/merge state |
+| `GET/POST` | `/api/google-config` | Google Sheets webhook config |
+| `POST` | `/api/test-google-sync` | Test webhook connection |
 
 ---
 
-## 🛠️ Development Notes
+## Impact
 
-- No build step, no package.json, no npm install — just Node.js.
-- Front-end data lives in IndexedDB; the server is the source of truth for `verified` flags.
-- Editable files: `js/app.js` (desktop UI), `js/db.js` (data layer), `js/mobile.js` (mobile UI), `server.js` (API).
-- Port is configurable at the top of `server.js` (`const PORT = 3000;`).
+- **Eliminated manual Excel tracking** — all pass data lives in one system
+- **Reduced monthly renewal time** from hours to a single click
+- **Enabled remote verification** — manager approves passes from phone on-site
+- **Zero data loss** — auto-versioned snapshots and sync guard protect against overwrites
+- **Seamless Google Sheets integration** — verified data flows to existing workflow
+- **No recurring costs** — runs on local hardware, zero cloud dependencies
 
 ---
 
-## 🧰 Requirements
+## Privacy & Data
 
-- **Windows**: any modern version — just double-click `START.bat`.
-- **Node.js**: required only for the manual start (Option B).
-- A Wi-Fi/LAN connection if you need to use the Manager Mobile App on a phone.
+This repository **excludes all customer data**. The `.gitignore` blocks `data/`, photo directories, imported member files, and business documents. Only application source code and documentation screenshots are published.
+
+At runtime, all data stays on the client's local machine and network.
