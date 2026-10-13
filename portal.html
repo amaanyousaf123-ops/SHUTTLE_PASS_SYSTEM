@@ -3,552 +3,1378 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Commander City Shuttle Pass — Online Payment Portal & AI OCR</title>
-  <meta name="description" content="Online payment portal for Commander City Shuttle Passes with AI OCR transaction verification, instant digital pass issuance, and Google Sheets sync.">
+  <title>Commander City Shuttle Pass — Online Payment Portal</title>
+  <meta name="description" content="Pay for your Commander City Shuttle Pass online. Upload your JazzCash, EasyPaisa or bank receipt and get your digital pass instantly via AI OCR.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
-  
-  <!-- Google Fonts: Inter -->
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- Portal CSS -->
-  <link rel="stylesheet" href="css/portal.css">
-  
-  <!-- QRCode.js for dynamic pass card QR code generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- Tesseract.js OCR -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-</head>
-<body class="standalone-portal">
 
-  <!-- Toast Alert -->
-  <div class="portal-toast" id="portalToast">
-    <i class="fas fa-check-circle" id="toastIcon" style="color:var(--green);font-size:1.2rem;"></i>
-    <span id="toastMessage">Operation successful</span>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0a0f1e;
+      --bg-surface:   #111827;
+      --bg-card:      #1a2235;
+      --bg-input:     #0f172a;
+      --border:       rgba(255,255,255,0.08);
+      --cyan:         #06b6d4;
+      --cyan-light:   #67e8f9;
+      --green:        #10b981;
+      --purple:       #8b5cf6;
+      --amber:        #f59e0b;
+      --red:          #ef4444;
+      --text:         #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted:   #475569;
+      --radius-sm:    8px;
+      --radius-md:    14px;
+      --radius-lg:    20px;
+      --shadow:       0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      background-image: radial-gradient(ellipse at 20% 10%, rgba(6,182,212,0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 80%, rgba(139,92,246,0.05) 0%, transparent 50%);
+    }
+
+    /* ── Header ── */
+    .portal-header {
+      background: rgba(17,24,39,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 68px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand img {
+      height: 38px;
+      width: 38px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    .brand-name {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .brand-name span { color: var(--cyan); }
+    .brand-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      margin-top: 1px;
+    }
+
+    .header-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.3);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    /* ── Main Container ── */
+    .portal-wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 36px 20px 28px;
+    }
+    .hero h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+    }
+    .hero h1 span { color: var(--cyan); }
+    .hero p {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      margin-top: 10px;
+      max-width: 580px;
+      margin-inline: auto;
+      line-height: 1.6;
+    }
+    .instant-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(6,182,212,0.1);
+      border: 1px solid rgba(6,182,212,0.3);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-top: 14px;
+    }
+
+    /* ── Wizard Progress ── */
+    .wizard {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin: 0 0 28px;
+      padding: 0 10px;
+      overflow-x: auto;
+    }
+    .wz-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 80px;
+      position: relative;
+    }
+    .wz-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 18px;
+      left: 60%;
+      width: 80%;
+      height: 2px;
+      background: var(--border);
+    }
+    .wz-step.active::after,
+    .wz-step.done::after { background: var(--cyan); }
+    .wz-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-weight: 800;
+      color: var(--text-muted);
+      background: var(--bg-surface);
+      z-index: 1;
+      transition: all 0.3s;
+    }
+    .wz-step.active .wz-num {
+      border-color: var(--cyan);
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 16px rgba(6,182,212,0.4);
+    }
+    .wz-step.done .wz-num {
+      border-color: var(--green);
+      background: var(--green);
+      color: #000;
+    }
+    .wz-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .wz-step.active .wz-label { color: var(--cyan); }
+    .wz-step.done .wz-label { color: var(--green); }
+
+    /* ── Glass Card ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .card-title i { font-size: 1rem; }
+    .card-desc {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* ── Form Elements ── */
+    .form-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 7px;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media(max-width:500px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 16px; }
+
+    /* ── Search ── */
+    .search-wrap { position: relative; margin-bottom: 16px; }
+    .search-wrap .search-icon {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); pointer-events: none;
+    }
+    .search-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: #1e2d42;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+      z-index: 50;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .resident-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .resident-item:last-child { border-bottom: none; }
+    .resident-item:hover { background: rgba(6,182,212,0.06); }
+    .res-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+    .res-name { font-weight: 700; font-size: 0.9rem; color: #fff; }
+    .res-meta { font-size: 0.73rem; color: var(--text-muted); margin-top: 2px; }
+    .res-badge {
+      margin-left: auto;
+      background: rgba(6,182,212,0.1);
+      color: var(--cyan);
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    /* ── Selected Resident Card ── */
+    .selected-resident {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(6,182,212,0.06);
+      border: 1px solid rgba(6,182,212,0.2);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    .selected-res-photo {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--cyan);
+      flex-shrink: 0;
+    }
+    .selected-res-info h3 { font-size: 1rem; font-weight: 800; color: #fff; }
+    .selected-res-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .res-tag {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.72rem; color: var(--text-secondary);
+    }
+    .res-tag i { font-size: 0.65rem; }
+
+    /* ── Pass Type Cards ── */
+    .pass-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media(max-width:480px) { .pass-grid { grid-template-columns: 1fr; } }
+    .pass-opt {
+      background: var(--bg-input);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pass-opt.sel {
+      border-color: var(--cyan);
+      background: rgba(6,182,212,0.07);
+      box-shadow: 0 0 20px rgba(6,182,212,0.12);
+    }
+    .pass-opt-top {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .pass-badge {
+      font-size: 0.72rem; font-weight: 700;
+      background: rgba(6,182,212,0.15);
+      color: var(--cyan);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .pass-price {
+      font-size: 1.6rem; font-weight: 900; color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .pass-desc { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── Buttons ── */
+    .btn {
+      width: 100%;
+      padding: 13px 24px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan), #0891b2);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(6,182,212,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(6,182,212,0.45); }
+    .btn-primary:disabled { opacity: 0.45; transform: none; cursor: not-allowed; }
+    .btn-ghost {
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--cyan); color: #fff; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-row .btn-ghost { flex: 1; }
+    .btn-row .btn-primary { flex: 2; }
+
+    /* ── Payment Method Cards ── */
+    .pm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .pm-card {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+    .pm-head {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .pm-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .pm-icon.meezan { background: rgba(56,189,248,0.15); color: #38bdf8; }
+    .pm-icon.jazz { background: rgba(235,28,36,0.12); color: #ef4444; }
+    .pm-icon.easy { background: rgba(0,169,80,0.12); color: #10b981; }
+    .pm-icon.raast { background: rgba(139,92,246,0.12); color: var(--purple); }
+    .pm-name { font-weight: 700; font-size: 0.9rem; color: #fff; }
+    .pm-sub { font-size: 0.7rem; color: var(--text-muted); }
+    .copy-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .copy-row strong { color: #fff; }
+    .copy-btn {
+      background: rgba(6,182,212,0.1);
+      border: 1px solid rgba(6,182,212,0.2);
+      color: var(--cyan);
+      border-radius: 5px;
+      padding: 3px 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: rgba(6,182,212,0.2); }
+
+    /* ── OCR Scanner ── */
+    .ocr-drop {
+      border: 2px dashed rgba(6,182,212,0.3);
+      border-radius: var(--radius-md);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(6,182,212,0.03);
+      margin-bottom: 16px;
+    }
+    .ocr-drop:hover, .ocr-drop.drag-over {
+      border-color: var(--cyan);
+      background: rgba(6,182,212,0.07);
+    }
+    .ocr-drop-icon {
+      font-size: 2.4rem;
+      color: var(--cyan);
+      margin-bottom: 12px;
+    }
+    .ocr-drop h3 { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .ocr-drop p { font-size: 0.8rem; color: var(--text-muted); }
+
+    .receipt-preview-wrap {
+      display: none;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .receipt-preview-wrap.show { display: grid; grid-template-columns: 1fr 1fr; }
+    @media(max-width:600px) { .receipt-preview-wrap.show { grid-template-columns: 1fr; } }
+
+    .receipt-img-frame {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      position: relative;
+    }
+    .receipt-img-frame img {
+      width: 100%; display: block;
+      max-height: 260px; object-fit: contain;
+    }
+    .scan-laser {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 12px var(--cyan);
+      top: 0;
+      display: none;
+    }
+    .scan-laser-active .scan-laser { display: block; animation: laser 2s ease-in-out infinite; }
+    @keyframes laser { 0%,100%{top:0} 50%{top:calc(100% - 2px)} }
+
+    .scanning-card {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+    .progress-bg {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      border-radius: 2px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    .extracted-card {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .extracted-head {
+      background: var(--bg-surface);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .extracted-provider { font-size: 1rem; font-weight: 800; color: #fff; }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.72rem; font-weight: 800;
+    }
+    .status-badge.ok { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+    .status-badge.fail { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+    .extracted-field {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .extracted-field:last-child { border-bottom: none; }
+    .ext-label { color: var(--text-muted); }
+    .ext-val { font-weight: 700; color: #fff; }
+
+    .demo-bar {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-bottom: 14px;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      align-items: center;
+    }
+    .demo-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-right: 4px; }
+    .btn-demo {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .btn-demo:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── Step 4: Pass Card ── */
+    .success-icon {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; color: var(--green);
+      margin: 0 auto 16px;
+    }
+    .success-title {
+      text-align: center;
+      font-size: 1.8rem; font-weight: 900;
+      color: #fff; margin-bottom: 6px;
+    }
+    .success-sub {
+      text-align: center;
+      color: var(--text-secondary);
+      max-width: 500px;
+      margin: 0 auto 24px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .pass-card-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
+    .shuttle-pass {
+      width: 340px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .sp-head {
+      padding: 14px 18px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sp-brand { font-size: 1rem; font-weight: 900; color: #fff; }
+    .sp-brand span { color: var(--cyan-light); }
+    .sp-serial {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 0.72rem; font-weight: 800;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .sp-body {
+      display: flex; gap: 14px;
+      padding: 14px 18px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .sp-photo {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.3);
+      flex-shrink: 0;
+    }
+    .sp-name { font-size: 0.95rem; font-weight: 800; color: #fff; }
+    .sp-cnic { font-size: 0.68rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+    .sp-house { font-size: 0.68rem; color: rgba(255,255,255,0.5); margin-top: 1px; }
+    .sp-type { font-size: 0.7rem; font-weight: 700; color: var(--cyan-light); margin-top: 5px; }
+    .sp-footer {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding: 12px 18px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .sp-validity-label { font-size: 0.6rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.06em; }
+    .sp-validity { font-size: 0.78rem; font-weight: 800; color: #fff; margin-top: 2px; }
+    .sp-ocr-tag { font-size: 0.6rem; font-weight: 700; color: var(--green); margin-top: 2px; }
+    .sp-qr { width: 48px; height: 48px; }
+
+    .action-btns {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 10px; margin-top: 6px;
+    }
+    .action-btns .btn { width: auto; padding: 11px 22px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 12px 22px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.875rem; font-weight: 600;
+      color: var(--text);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 9999;
+      opacity: 0;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      max-width: 90vw;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media print {
+      body > *:not(.pass-card-wrap) { display: none !important; }
+      .pass-card-wrap { display: flex !important; justify-content: center !important; padding: 20px !important; }
+      .shuttle-pass { box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <i id="toastIcon" class="fas fa-check-circle"></i>
+    <span id="toastMsg">Done</span>
   </div>
 
-  <div class="portal-container">
-    
-    <!-- Top Header -->
-    <header class="portal-header glass-panel">
-      <div class="brand-wrapper">
-        <img src="LOGO.png" alt="Commander City Logo" class="brand-logo-img" onerror="this.style.display='none'">
-        <div class="brand-text">
-          <h1>Commander<span>City</span></h1>
-          <p>Shuttle Pass Online Portal</p>
+  <!-- Header -->
+  <header class="portal-header">
+    <div class="brand">
+      <img src="LOGO.png" alt="Logo" onerror="this.style.display='none'">
+      <div>
+        <div class="brand-name">Commander<span>City</span></div>
+        <div class="brand-sub">Shuttle Pass Online Portal</div>
+      </div>
+    </div>
+    <div class="header-badge">
+      <i class="fas fa-shield-check"></i> Secure Payment Portal
+    </div>
+  </header>
+
+  <div class="portal-wrap">
+
+    <!-- Hero -->
+    <div class="hero">
+      <h1>Renew Your <span>Shuttle Pass</span> Online</h1>
+      <p>Transfer the fee via JazzCash, EasyPaisa, or Bank Transfer. Upload your receipt and AI OCR will verify and issue your digital pass instantly.</p>
+      <div class="instant-pill">
+        <i class="fas fa-bolt"></i> Instant AI Verification • Zero Wait Time
+      </div>
+    </div>
+
+    <!-- Wizard Progress -->
+    <div class="wizard" id="wizardBar">
+      <div class="wz-step active" id="wz1">
+        <div class="wz-num">1</div>
+        <div class="wz-label">Select Pass</div>
+      </div>
+      <div class="wz-step" id="wz2">
+        <div class="wz-num">2</div>
+        <div class="wz-label">Bank Details</div>
+      </div>
+      <div class="wz-step" id="wz3">
+        <div class="wz-num">3</div>
+        <div class="wz-label">AI OCR Scan</div>
+      </div>
+      <div class="wz-step" id="wz4">
+        <div class="wz-num"><i class="fas fa-check" style="font-size:0.8rem;"></i></div>
+        <div class="wz-label">Pass Issued</div>
+      </div>
+    </div>
+
+    <!-- ── STEP 1: Identify & Select ── -->
+    <div class="card" id="step1">
+      <div class="card-title">
+        <i class="fas fa-user-check" style="color:var(--cyan)"></i>
+        Step 1: Your Details & Pass Period
+      </div>
+      <p class="card-desc">Search your profile by CNIC, Name, or Member ID. Then select the month and pass type.</p>
+
+      <!-- Search -->
+      <div class="form-group">
+        <label class="form-label" for="searchInput">Search Resident (CNIC, Name, or Member ID)</label>
+        <div class="search-wrap">
+          <input type="text" id="searchInput" class="form-input"
+            placeholder="e.g. 42201-5311737-7, Shoaib Ali, or CC-00001..." autocomplete="off">
+          <i class="fas fa-search search-icon"></i>
+          <div class="search-results" id="searchResults" style="display:none;"></div>
         </div>
       </div>
 
-      <nav class="header-nav-tabs">
-        <button class="tab-btn active" id="tabBtnPassenger" onclick="PortalApp.switchTab('passenger')">
-          <i class="fas fa-id-card"></i> <span>Passenger Portal</span>
-        </button>
-        <button class="tab-btn" id="tabBtnConductor" onclick="PortalApp.switchTab('conductor')">
-          <i class="fas fa-qrcode"></i> <span>Conductor Verifier</span>
-        </button>
-        <button class="tab-btn" id="tabBtnAdmin" onclick="PortalApp.switchTab('admin')">
-          <i class="fas fa-shield-alt"></i> <span>Admin Desk</span>
-        </button>
-      </nav>
-    </header>
-
-    <!-- ========================================================
-         VIEW 1: PASSENGER ONLINE PAYMENT PORTAL
-         ======================================================== -->
-    <main id="viewPassenger">
-      
-      <!-- Hero Banner -->
-      <section class="hero-banner">
-        <h2>Renew Your Shuttle Pass Online</h2>
-        <p>Transfer the fee via JazzCash, EasyPaisa, or Online Bank Transfer. Upload your receipt and our AI OCR scanner will verify your transaction and issue your digital pass instantly!</p>
-        <div class="verified-pill">
-          <i class="fas fa-bolt"></i> Instant AI Verification • Zero Wait Time
-        </div>
-      </section>
-
-      <!-- Wizard Progress Indicators -->
-      <div class="wizard-progress">
-        <div class="wizard-step active" id="wizardStep1">
-          <span class="step-number">1</span>
-          <span class="step-title">Select Pass</span>
-        </div>
-        <div class="wizard-step" id="wizardStep2">
-          <span class="step-number">2</span>
-          <span class="step-title">Bank Details</span>
-        </div>
-        <div class="wizard-step" id="wizardStep3">
-          <span class="step-number">3</span>
-          <span class="step-title">AI OCR Scan</span>
-        </div>
-        <div class="wizard-step" id="wizardStep4">
-          <span class="step-number">4</span>
-          <span class="step-title">Pass Issued</span>
+      <!-- Selected Resident -->
+      <div class="selected-resident" id="selResident" style="display:none;">
+        <img src="LOGO.png" id="selPhoto" class="selected-res-photo" alt="Photo" onerror="this.src='LOGO.png'">
+        <div class="selected-res-info">
+          <h3 id="selName">Resident Name</h3>
+          <div class="selected-res-tags">
+            <span class="res-tag"><i class="fas fa-id-badge" style="color:var(--cyan)"></i> <span id="selId">CC-00001</span></span>
+            <span class="res-tag"><i class="fas fa-id-card" style="color:var(--purple)"></i> <span id="selCnic">N/A</span></span>
+            <span class="res-tag"><i class="fas fa-home" style="color:var(--green)"></i> <span id="selHouse">—</span></span>
+          </div>
         </div>
       </div>
 
-      <!-- STEP 1: Resident & Pass Selection -->
-      <section class="portal-section glass-panel" id="sectionStep1">
-        <h2 class="section-title"><i class="fas fa-user-check" style="color:var(--cyan)"></i> Step 1: Resident Identification & Pass Period</h2>
-        <p class="section-desc">Search your registered profile by CNIC, Member Code, or Name to attach your pass.</p>
-
-        <!-- Search Box -->
-        <div class="resident-search-wrapper">
-          <label class="form-label" for="residentSearchInput">Search Resident (CNIC, Name, or Member ID)</label>
-          <div style="position:relative;margin-top:6px;">
-            <input type="text" id="residentSearchInput" class="form-input" placeholder="e.g. 42201-5311737-7, Shoaib Ali, or CC-00001..." autocomplete="off">
-            <i class="fas fa-search" style="position:absolute;right:14px;top:15px;color:var(--text-muted)"></i>
-          </div>
-          <div class="resident-results" id="residentSearchResults" style="display:none;"></div>
+      <!-- Month / Year -->
+      <div class="form-grid" style="margin-bottom:20px;">
+        <div class="form-group">
+          <label class="form-label" for="monthSel">Pass Month</label>
+          <select id="monthSel" class="form-input" onchange="App.calcFee()">
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10" selected>October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
         </div>
-
-        <!-- Selected Resident Card Preview -->
-        <div class="resident-card" id="selectedResidentCard" style="display:none;">
-          <img src="LOGO.png" alt="Resident Photo" class="resident-card-photo" id="selectedResidentPhoto">
-          <div class="resident-card-info">
-            <h3 id="selectedResidentName">Selected Resident</h3>
-            <div class="resident-meta">
-              <span class="resident-meta-item"><i class="fas fa-id-badge" style="color:var(--cyan)"></i> <span id="selectedResidentId">CC-00000</span></span>
-              <span class="resident-meta-item"><i class="fas fa-id-card" style="color:var(--purple)"></i> <span id="selectedResidentCnic">42201-XXXXXXX-X</span></span>
-              <span class="resident-meta-item"><i class="fas fa-home" style="color:var(--green)"></i> <span id="selectedResidentHouse">House No: Block H</span></span>
-              <span class="resident-meta-item"><i class="fas fa-phone" style="color:var(--amber)"></i> <span id="selectedResidentContact">0300-XXXXXXX</span></span>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="form-label" for="yearSel">Pass Year</label>
+          <select id="yearSel" class="form-input" onchange="App.calcFee()">
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+          </select>
         </div>
-
-        <!-- Month & Year Grid -->
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label" for="passMonthSelect">Pass Month</label>
-            <select id="passMonthSelect" class="form-input" onchange="PortalApp.updateFeeCalculation()">
-              <option value="1">January</option>
-              <option value="2">February</option>
-              <option value="3">March</option>
-              <option value="4">April</option>
-              <option value="5">May</option>
-              <option value="6">June</option>
-              <option value="7">July</option>
-              <option value="8">August</option>
-              <option value="9">September</option>
-              <option value="10" selected>October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="passYearSelect">Pass Year</label>
-            <select id="passYearSelect" class="form-input" onchange="PortalApp.updateFeeCalculation()">
-              <option value="2026" selected>2026</option>
-              <option value="2027">2027</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Pass Type Selector Cards -->
-        <label class="form-label" style="margin-bottom:10px;display:block;">Select Pass Category</label>
-        <div class="pass-type-grid">
-          <div class="pass-card-option selected" id="optFullPass" onclick="PortalApp.selectPassType('Full')">
-            <div class="pass-option-header">
-              <span class="pass-badge">Standard Monthly</span>
-              <i class="fas fa-check-circle" style="color:var(--cyan);font-size:1.2rem;"></i>
-            </div>
-            <div class="pass-price" id="displayFullPrice">PKR 8,000</div>
-            <div class="pass-validity">Full Month Unlimited Shuttle Access (Both Ways)</div>
-          </div>
-
-          <div class="pass-card-option" id="optHalfPass" onclick="PortalApp.selectPassType('Half')">
-            <div class="pass-option-header">
-              <span class="pass-badge" style="color:var(--purple)">15 Days / Half</span>
-              <i class="far fa-circle" style="color:var(--text-muted);font-size:1.2rem;"></i>
-            </div>
-            <div class="pass-price" id="displayHalfPrice">PKR 4,000</div>
-            <div class="pass-validity">15 Days Validity (Half Month Shuttle Pass)</div>
-          </div>
-        </div>
-
-        <button class="btn-primary" onclick="PortalApp.goToStep(2)" id="btnStep1Continue">
-          <span>Proceed to Payment Transfer</span> <i class="fas fa-arrow-right"></i>
-        </button>
-      </section>
-
-      <!-- STEP 2: Official Bank Transfer Details -->
-      <section class="portal-section glass-panel" id="sectionStep2" style="display:none;">
-        <h2 class="section-title"><i class="fas fa-university" style="color:var(--green)"></i> Step 2: Transfer Required Fee</h2>
-        <p class="section-desc">Transfer the exact fee of <strong id="transferRequiredAmount" style="color:var(--cyan)">PKR 8,000</strong> to any of the official Commander City accounts below and take a screenshot of your receipt.</p>
-
-        <div class="payment-methods-grid">
-          <!-- Meezan Bank -->
-          <div class="payment-method-card">
-            <div class="pm-header">
-              <div class="pm-icon-wrap pm-meezan"><i class="fas fa-building-columns"></i></div>
-              <div>
-                <div class="pm-title">Meezan Bank</div>
-                <div class="pm-subtitle">Commander City Shuttle Service</div>
-              </div>
-            </div>
-            <div class="copy-row">
-              <span>A/C: <strong>0102-0105847291</strong></span>
-              <button class="copy-btn" onclick="PortalApp.copyToClipboard('01020105847291', 'Meezan Account Number')">
-                <i class="far fa-copy"></i> Copy
-              </button>
-            </div>
-            <div class="copy-row">
-              <span style="font-size:0.75rem;">IBAN: PK42MEZN0001020105847291</span>
-              <button class="copy-btn" onclick="PortalApp.copyToClipboard('PK42MEZN0001020105847291', 'IBAN')">
-                <i class="far fa-copy"></i> Copy
-              </button>
-            </div>
-          </div>
-
-          <!-- JazzCash -->
-          <div class="payment-method-card">
-            <div class="pm-header">
-              <div class="pm-icon-wrap pm-jazz"><i class="fas fa-mobile-screen"></i></div>
-              <div>
-                <div class="pm-title">JazzCash Account</div>
-                <div class="pm-subtitle">Commander City Shuttle</div>
-              </div>
-            </div>
-            <div class="copy-row">
-              <span>Mobile: <strong>0300-8271629</strong></span>
-              <button class="copy-btn" onclick="PortalApp.copyToClipboard('03008271629', 'JazzCash Number')">
-                <i class="far fa-copy"></i> Copy
-              </button>
-            </div>
-            <div class="copy-row">
-              <span>Title: Commander Shuttle</span>
-              <span style="color:var(--green);font-size:0.75rem;font-weight:700;">● Active</span>
-            </div>
-          </div>
-
-          <!-- EasyPaisa -->
-          <div class="payment-method-card">
-            <div class="pm-header">
-              <div class="pm-icon-wrap pm-easy"><i class="fas fa-wallet"></i></div>
-              <div>
-                <div class="pm-title">EasyPaisa Account</div>
-                <div class="pm-subtitle">Commander Shuttle Service</div>
-              </div>
-            </div>
-            <div class="copy-row">
-              <span>Mobile: <strong>0300-8271629</strong></span>
-              <button class="copy-btn" onclick="PortalApp.copyToClipboard('03008271629', 'EasyPaisa Number')">
-                <i class="far fa-copy"></i> Copy
-              </button>
-            </div>
-            <div class="copy-row">
-              <span>Title: Commander City</span>
-              <span style="color:var(--green);font-size:0.75rem;font-weight:700;">● Active</span>
-            </div>
-          </div>
-
-          <!-- Raast Instant Payment -->
-          <div class="payment-method-card">
-            <div class="pm-header">
-              <div class="pm-icon-wrap pm-raast"><i class="fas fa-bolt"></i></div>
-              <div>
-                <div class="pm-title">Raast Instant ID</div>
-                <div class="pm-subtitle">State Bank of Pakistan Raast</div>
-              </div>
-            </div>
-            <div class="copy-row">
-              <span>Raast ID: <strong>03008271629</strong></span>
-              <button class="copy-btn" onclick="PortalApp.copyToClipboard('03008271629', 'Raast ID')">
-                <i class="far fa-copy"></i> Copy
-              </button>
-            </div>
-            <div class="copy-row">
-              <span>Transfer Fee: <strong>PKR 0 (Free)</strong></span>
-              <span style="color:var(--cyan-light);font-size:0.75rem;font-weight:700;">Zero Fee</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:12px;margin-top:16px;">
-          <button class="btn-primary" style="background:var(--bg-surface);color:#fff;width:auto;flex:1;" onclick="PortalApp.goToStep(1)">
-            <i class="fas fa-arrow-left"></i> Back
-          </button>
-          <button class="btn-primary" style="flex:2;" onclick="PortalApp.goToStep(3)">
-            <span>I Have Paid — Scan Receipt with AI OCR</span> <i class="fas fa-camera"></i>
-          </button>
-        </div>
-      </section>
-
-      <!-- STEP 3: AI / OCR Receipt Scanner -->
-      <section class="portal-section glass-panel" id="sectionStep3" style="display:none;">
-        <h2 class="section-title"><i class="fas fa-brain" style="color:var(--purple)"></i> Step 3: AI Transaction OCR Scanner</h2>
-        <p class="section-desc">Upload a screenshot of your payment receipt (JazzCash, EasyPaisa, Bank Slip). Our AI engine extracts the Transaction ID, Amount, and Date, then accepts valid payments instantly.</p>
-
-        <!-- Quick 1-Click Demo Receipts for instant testing -->
-        <div class="demo-receipts-bar">
-          <span class="demo-title"><i class="fas fa-vial"></i> Quick Test:</span>
-          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('jazzcash_8000')">
-            <i class="fas fa-receipt" style="color:#eb1c24"></i> JazzCash (PKR 8,000)
-          </button>
-          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('easypaisa_4000')">
-            <i class="fas fa-receipt" style="color:#00a950"></i> EasyPaisa (PKR 4,000)
-          </button>
-          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('meezan_8000')">
-            <i class="fas fa-receipt" style="color:#38bdf8"></i> Meezan Bank (PKR 8,000)
-          </button>
-          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('invalid_test')" style="border-color:rgba(239,68,68,0.4);color:#fca5a5;">
-            <i class="fas fa-times-circle" style="color:#ef4444"></i> Test Rejection
-          </button>
-        </div>
-
-        <!-- Receipt Drag & Drop / Upload Area -->
-        <div class="ocr-scanner-box" id="ocrDropZone" onclick="document.getElementById('receiptFileInput').click()">
-          <input type="file" id="receiptFileInput" accept="image/*" style="display:none;" onchange="PortalApp.handleReceiptUpload(event)">
-          <div class="ocr-upload-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-          <h3>Click to Upload or Drag & Drop Payment Receipt</h3>
-          <p>Supports Screenshots from JazzCash, EasyPaisa, Meezan, Alfalah, HBL, UBL, Raast, or Camera Photos</p>
-        </div>
-
-        <!-- Scanning & Preview Viewport -->
-        <div class="receipt-preview-container" id="receiptPreviewContainer" style="display:none;">
-          
-          <!-- Image Frame with Holographic Laser Scanner -->
-          <div class="receipt-image-frame" id="receiptImageFrame">
-            <div class="scan-laser-line" id="scanLaserLine"></div>
-            <img id="receiptImagePreview" src="" alt="Receipt Preview">
-          </div>
-
-          <!-- Status & Extracted Fields -->
-          <div class="scanning-status-card">
-            
-            <div id="scanningStatusBox">
-              <h3 style="font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:8px;">
-                <i class="fas fa-spinner fa-spin" style="color:var(--cyan)" id="scanningSpinner"></i>
-                <span id="scanningStatusText">Scanning Receipt with AI OCR...</span>
-              </h3>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" id="ocrProgressBar"></div>
-              </div>
-              <p style="font-size:0.8rem;color:var(--text-secondary);" id="ocrStatusSubtext">Preprocessing image and detecting characters...</p>
-            </div>
-
-            <!-- Extracted Card -->
-            <div class="extracted-card" id="extractedCard" style="display:none;margin-top:16px;">
-              <div class="extracted-header">
-                <div>
-                  <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Provider</span>
-                  <div style="font-size:1.1rem;font-weight:800;color:#fff;" id="extractedProvider">JazzCash</div>
-                </div>
-                <div class="match-status-badge status-accepted" id="extractedMatchBadge">
-                  <i class="fas fa-check-circle"></i> <span>VERIFIED & ACCEPTED</span>
-                </div>
-              </div>
-
-              <div class="extracted-field">
-                <span class="label">Transaction ID (TID)</span>
-                <span class="val" id="extractedTid">0129849201</span>
-              </div>
-
-              <div class="extracted-field">
-                <span class="label">Extracted Amount</span>
-                <span class="val" id="extractedAmount" style="color:var(--cyan-light)">PKR 8,000</span>
-              </div>
-
-              <div class="extracted-field">
-                <span class="label">Required Pass Fee</span>
-                <span class="val" id="extractedRequiredFee">PKR 8,000</span>
-              </div>
-
-              <div class="extracted-field">
-                <span class="label">Transaction Date</span>
-                <span class="val" id="extractedDate">12 Oct 2026</span>
-              </div>
-
-              <div class="extracted-field">
-                <span class="label">Recipient Title</span>
-                <span class="val" id="extractedRecipient">Commander City Shuttle</span>
-              </div>
-
-              <div class="extracted-field">
-                <span class="label">AI Confidence Score</span>
-                <span class="val" id="extractedConfidence" style="color:var(--green)">94%</span>
-              </div>
-
-              <div style="margin-top:18px;">
-                <button class="btn-primary" id="btnAcceptAndIssuePass" onclick="PortalApp.confirmAndIssuePass()">
-                  <i class="fas fa-id-card"></i> <span>Accept Transaction & Generate Pass</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- STEP 4: Success & Printable Pass Card -->
-      <section class="portal-section glass-panel pass-result-section" id="sectionStep4" style="display:none;">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:50%;background:rgba(16,185,129,0.15);color:var(--green);font-size:2rem;margin-bottom:14px;border:1px solid rgba(16,185,129,0.3);">
-          <i class="fas fa-check"></i>
-        </div>
-        <h2 style="font-size:1.8rem;font-weight:900;color:#fff;margin-bottom:4px;">Transaction Verified & Accepted!</h2>
-        <p style="color:var(--text-secondary);max-width:550px;margin:0 auto 20px;">
-          Your payment has been auto-verified by AI OCR and recorded. Your shuttle pass is now active and synced to the Google Sheets master register!
-        </p>
-
-        <!-- Digital Pass Card (85.6mm x 54mm CNIC standard) -->
-        <div class="pass-card-container">
-          <div class="shuttle-pass-card" id="printablePassCard">
-            <!-- Header -->
-            <div class="pass-card-header">
-              <div class="pass-card-brand">Commander<span>City</span> Shuttle</div>
-              <div class="pass-serial-pill" id="cardSerialNo">#01</div>
-            </div>
-
-            <!-- Body -->
-            <div class="pass-card-body">
-              <img src="LOGO.png" alt="Photo" class="pass-card-photo" id="cardPhoto">
-              <div class="pass-card-details">
-                <div class="name" id="cardMemberName">SHOAIB ALI</div>
-                <div class="cnic" id="cardCnic">CNIC: 42201-5311737-7</div>
-                <div class="house" id="cardHouse">House: R-108 Block G-1</div>
-                <div style="margin-top:4px;font-size:0.72rem;color:var(--cyan-light);font-weight:700;" id="cardPassType">
-                  FULL MONTH PASS (PKR 8,000)
-                </div>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="pass-card-footer">
-              <div>
-                <div style="color:var(--text-muted);font-size:0.65rem;">VALIDITY PERIOD</div>
-                <div style="font-weight:800;font-size:0.8rem;" id="cardValidityDates">01-10-2026 to 31-10-2026</div>
-                <div style="color:var(--green);font-size:0.65rem;font-weight:700;">● AUTO-VERIFIED (OCR)</div>
-              </div>
-              <div class="pass-card-qr" id="cardQrCode"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div style="display:flex;justify-content:center;gap:12px;margin-top:20px;flex-wrap:wrap;">
-          <button class="btn-primary" style="width:auto;padding:12px 24px;" onclick="window.print()">
-            <i class="fas fa-print"></i> <span>Print Pass Card</span>
-          </button>
-          <button class="btn-primary" style="width:auto;padding:12px 24px;background:var(--bg-surface);color:#fff;" onclick="PortalApp.downloadPassAsImage()">
-            <i class="fas fa-download"></i> <span>Download Pass Image</span>
-          </button>
-          <button class="btn-primary" style="width:auto;padding:12px 24px;background:var(--bg-input);color:var(--cyan);" onclick="PortalApp.resetWizard()">
-            <i class="fas fa-redo"></i> <span>Issue Another Pass</span>
-          </button>
-        </div>
-      </section>
-
-    </main>
-
-    <!-- ========================================================
-         VIEW 2: CONDUCTOR / BUS QR CODE SCANNER
-         ======================================================== -->
-    <main id="viewConductor" style="display:none;">
-      <section class="portal-section glass-panel conductor-scanner-wrapper">
-        <h2 class="section-title" style="justify-content:center;"><i class="fas fa-qrcode" style="color:var(--cyan)"></i> Conductor Pass Verifier</h2>
-        <p class="section-desc">Verify pass validity on board the shuttle bus in real time.</p>
-
-        <!-- Pass Verification Input / Simulator -->
-        <div class="form-group" style="margin-bottom:16px;">
-          <label class="form-label" for="conductorSerialInput">Enter Pass Serial # or Member Code</label>
-          <div style="display:flex;gap:8px;margin-top:6px;">
-            <input type="text" id="conductorSerialInput" class="form-input" placeholder="e.g. 01, 104, or CC-00001">
-            <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="PortalApp.verifyPassConductor()">
-              Verify
-            </button>
-          </div>
-        </div>
-
-        <!-- Conductor Result Card -->
-        <div id="conductorResultCard" style="display:none;padding:20px;border-radius:var(--radius-md);margin-top:20px;">
-          <div id="conductorStatusBadge" style="font-size:1.4rem;font-weight:900;margin-bottom:10px;"></div>
-          <div id="conductorDetailsBox" style="font-size:0.95rem;color:var(--text-secondary);"></div>
-        </div>
-      </section>
-    </main>
-
-    <!-- ========================================================
-         VIEW 3: ADMIN & AUDIT DESK
-         ======================================================== -->
-    <main id="viewAdmin" style="display:none;">
-      
-      <!-- Admin PIN Protection Banner if not authenticated -->
-      <section class="portal-section glass-panel" id="adminAuthSection">
-        <h2 class="section-title"><i class="fas fa-lock" style="color:var(--amber)"></i> Manager Authentication</h2>
-        <p class="section-desc">Enter the Manager Desk PIN to review online transactions and system controls.</p>
-        <div style="max-width:340px;margin-top:14px;">
-          <input type="password" id="adminPinInput" class="form-input" placeholder="Enter PIN (Default: commander123)" style="margin-bottom:12px;">
-          <button class="btn-primary" onclick="PortalApp.authenticateAdmin()">Unlock Admin Desk</button>
-        </div>
-      </section>
-
-      <!-- Admin Dashboard Content -->
-      <div id="adminDashboardContent" style="display:none;">
-        
-        <!-- Summary Stats Grid -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;">
-          <div class="glass-panel" style="padding:18px;">
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Total Online Revenue</span>
-            <div style="font-size:1.75rem;font-weight:900;color:var(--cyan);margin-top:4px;" id="adminStatRevenue">PKR 0</div>
-          </div>
-          <div class="glass-panel" style="padding:18px;">
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Verified Passes Issued</span>
-            <div style="font-size:1.75rem;font-weight:900;color:var(--green);margin-top:4px;" id="adminStatPasses">0</div>
-          </div>
-          <div class="glass-panel" style="padding:18px;">
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">AI OCR Auto-Accept Rate</span>
-            <div style="font-size:1.75rem;font-weight:900;color:var(--purple);margin-top:4px;">100%</div>
-          </div>
-          <div class="glass-panel" style="padding:18px;">
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Google Sheets Sync</span>
-            <div style="font-size:1rem;font-weight:800;color:var(--green);margin-top:8px;">
-              <i class="fas fa-check-circle"></i> Connected
-            </div>
-          </div>
-        </div>
-
-        <!-- Online Transactions Register -->
-        <section class="portal-section glass-panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h2 class="section-title" style="margin-bottom:0;"><i class="fas fa-list-check" style="color:var(--cyan)"></i> Online Transactions Register</h2>
-            <button class="btn-demo" onclick="PortalApp.triggerGoogleSync()">
-              <i class="fab fa-google-drive" style="color:#34a853"></i> Sync Now to Google Sheets
-            </button>
-          </div>
-
-          <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;" id="transactionsTable">
-              <thead>
-                <tr style="border-bottom:1px solid var(--border);text-align:left;color:var(--text-muted);">
-                  <th style="padding:10px 8px;">Date</th>
-                  <th style="padding:10px 8px;">Member Name</th>
-                  <th style="padding:10px 8px;">Pass Serial</th>
-                  <th style="padding:10px 8px;">Amount</th>
-                  <th style="padding:10px 8px;">Provider / TID</th>
-                  <th style="padding:10px 8px;">OCR Status</th>
-                  <th style="padding:10px 8px;text-align:right;">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="transactionsTableBody">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
-          </div>
-        </section>
-
       </div>
 
-    </main>
+      <!-- Pass Type -->
+      <label class="form-label" style="margin-bottom:10px;">Select Pass Type</label>
+      <div class="pass-grid" style="margin-bottom:22px;">
+        <div class="pass-opt sel" id="optFull" onclick="App.setPassType('Full')">
+          <div class="pass-opt-top">
+            <span class="pass-badge">Full Month</span>
+            <i class="fas fa-check-circle" style="color:var(--cyan)"></i>
+          </div>
+          <div class="pass-price" id="prFull">PKR 8,000</div>
+          <div class="pass-desc">Unlimited shuttle access — whole month</div>
+        </div>
+        <div class="pass-opt" id="optHalf" onclick="App.setPassType('Half')">
+          <div class="pass-opt-top">
+            <span class="pass-badge" style="color:var(--purple);background:rgba(139,92,246,0.12);">Half Month</span>
+            <i class="far fa-circle" style="color:var(--text-muted)"></i>
+          </div>
+          <div class="pass-price" id="prHalf">PKR 4,000</div>
+          <div class="pass-desc">15-day shuttle pass validity</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="App.goStep(2)" id="btnStep1">
+        <span>Proceed to Payment Details</span> <i class="fas fa-arrow-right"></i>
+      </button>
+    </div>
+
+    <!-- ── STEP 2: Bank Details ── -->
+    <div class="card" id="step2" style="display:none;">
+      <div class="card-title">
+        <i class="fas fa-university" style="color:var(--green)"></i>
+        Step 2: Transfer the Required Fee
+      </div>
+      <p class="card-desc">
+        Transfer exactly <strong id="amtRequired" style="color:var(--cyan)">PKR 8,000</strong> to any of the official Commander City accounts below, then take a screenshot of your receipt.
+      </p>
+
+      <div class="pm-grid">
+        <!-- Meezan Bank -->
+        <div class="pm-card">
+          <div class="pm-head">
+            <div class="pm-icon meezan"><i class="fas fa-building-columns"></i></div>
+            <div>
+              <div class="pm-name">Meezan Bank</div>
+              <div class="pm-sub">Commander City Shuttle</div>
+            </div>
+          </div>
+          <div class="copy-row">
+            <span>A/C: <strong>0102-0105847291</strong></span>
+            <button class="copy-btn" onclick="App.copy('01020105847291','Account No.')"><i class="far fa-copy"></i> Copy</button>
+          </div>
+          <div class="copy-row">
+            <span style="font-size:0.7rem;">IBAN: PK42MEZN0001020105847291</span>
+            <button class="copy-btn" onclick="App.copy('PK42MEZN0001020105847291','IBAN')"><i class="far fa-copy"></i> Copy</button>
+          </div>
+        </div>
+
+        <!-- JazzCash -->
+        <div class="pm-card">
+          <div class="pm-head">
+            <div class="pm-icon jazz"><i class="fas fa-mobile-screen"></i></div>
+            <div>
+              <div class="pm-name">JazzCash</div>
+              <div class="pm-sub">Commander City Shuttle</div>
+            </div>
+          </div>
+          <div class="copy-row">
+            <span>Mobile: <strong>0300-8271629</strong></span>
+            <button class="copy-btn" onclick="App.copy('03008271629','JazzCash No.')"><i class="far fa-copy"></i> Copy</button>
+          </div>
+          <div class="copy-row">
+            <span>Title: Commander Shuttle</span>
+            <span style="color:var(--green);font-size:0.7rem;font-weight:700;">● Active</span>
+          </div>
+        </div>
+
+        <!-- EasyPaisa -->
+        <div class="pm-card">
+          <div class="pm-head">
+            <div class="pm-icon easy"><i class="fas fa-wallet"></i></div>
+            <div>
+              <div class="pm-name">EasyPaisa</div>
+              <div class="pm-sub">Commander City Shuttle</div>
+            </div>
+          </div>
+          <div class="copy-row">
+            <span>Mobile: <strong>0300-8271629</strong></span>
+            <button class="copy-btn" onclick="App.copy('03008271629','EasyPaisa No.')"><i class="far fa-copy"></i> Copy</button>
+          </div>
+          <div class="copy-row">
+            <span>Title: Commander City</span>
+            <span style="color:var(--green);font-size:0.7rem;font-weight:700;">● Active</span>
+          </div>
+        </div>
+
+        <!-- Raast -->
+        <div class="pm-card">
+          <div class="pm-head">
+            <div class="pm-icon raast"><i class="fas fa-bolt"></i></div>
+            <div>
+              <div class="pm-name">Raast Instant</div>
+              <div class="pm-sub">State Bank of Pakistan</div>
+            </div>
+          </div>
+          <div class="copy-row">
+            <span>Raast ID: <strong>03008271629</strong></span>
+            <button class="copy-btn" onclick="App.copy('03008271629','Raast ID')"><i class="far fa-copy"></i> Copy</button>
+          </div>
+          <div class="copy-row">
+            <span>Transfer Fee: <strong>PKR 0 (Free)</strong></span>
+            <span style="color:var(--cyan);font-size:0.7rem;font-weight:700;">Zero Fee</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="App.goStep(1)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="btn btn-primary" onclick="App.goStep(3)">
+          <span>I Have Paid — Scan Receipt</span> <i class="fas fa-camera"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: OCR Scanner ── -->
+    <div class="card" id="step3" style="display:none;">
+      <div class="card-title">
+        <i class="fas fa-brain" style="color:var(--purple)"></i>
+        Step 3: AI Receipt Scanner
+      </div>
+      <p class="card-desc">Upload a screenshot of your payment receipt. AI OCR will extract the Transaction ID, amount, and date, then verify and accept it instantly.</p>
+
+      <!-- Demo bar -->
+      <div class="demo-bar">
+        <span class="demo-label"><i class="fas fa-vial"></i> Quick Test:</span>
+        <button class="btn-demo" onclick="App.demo('jazzcash_8000')">
+          <i class="fas fa-receipt" style="color:#ef4444"></i> JazzCash PKR 8,000
+        </button>
+        <button class="btn-demo" onclick="App.demo('easypaisa_4000')">
+          <i class="fas fa-receipt" style="color:#10b981"></i> EasyPaisa PKR 4,000
+        </button>
+        <button class="btn-demo" onclick="App.demo('meezan_8000')">
+          <i class="fas fa-receipt" style="color:#38bdf8"></i> Meezan PKR 8,000
+        </button>
+        <button class="btn-demo" onclick="App.demo('invalid_test')" style="border-color:rgba(239,68,68,0.3);color:#fca5a5;">
+          <i class="fas fa-times-circle" style="color:#ef4444"></i> Test Rejection
+        </button>
+      </div>
+
+      <!-- Drop zone -->
+      <div class="ocr-drop" id="ocrDrop" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="App.handleFile(event)">
+        <div class="ocr-drop-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+        <h3>Click to Upload or Drag & Drop Receipt</h3>
+        <p>JazzCash, EasyPaisa, Meezan, HBL, UBL, Raast, or any bank screenshot</p>
+      </div>
+
+      <!-- Preview + scanning -->
+      <div class="receipt-preview-wrap" id="previewWrap">
+        <div class="receipt-img-frame" id="imgFrame">
+          <div class="scan-laser" id="scanLaser"></div>
+          <img id="receiptImg" src="" alt="Receipt">
+        </div>
+
+        <div class="scanning-card">
+          <div id="scanStatus">
+            <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:0.95rem;">
+              <i class="fas fa-spinner fa-spin" style="color:var(--cyan)" id="spinIcon"></i>
+              <span id="statusText">Scanning with AI OCR...</span>
+            </div>
+            <div class="progress-bg">
+              <div class="progress-fill" id="progressBar"></div>
+            </div>
+            <p style="font-size:0.78rem;color:var(--text-muted);" id="statusSub">Detecting characters...</p>
+          </div>
+
+          <div class="extracted-card" id="extractedCard">
+            <div class="extracted-head">
+              <div class="extracted-provider" id="extProvider">JazzCash</div>
+              <div class="status-badge ok" id="extBadge">
+                <i class="fas fa-check-circle"></i> VERIFIED
+              </div>
+            </div>
+            <div class="extracted-field">
+              <span class="ext-label">Transaction ID</span>
+              <span class="ext-val" id="extTid">—</span>
+            </div>
+            <div class="extracted-field">
+              <span class="ext-label">Amount Paid</span>
+              <span class="ext-val" id="extAmt" style="color:var(--cyan-light)">—</span>
+            </div>
+            <div class="extracted-field">
+              <span class="ext-label">Required Fee</span>
+              <span class="ext-val" id="extRequired">—</span>
+            </div>
+            <div class="extracted-field">
+              <span class="ext-label">Date</span>
+              <span class="ext-val" id="extDate">—</span>
+            </div>
+            <div class="extracted-field">
+              <span class="ext-label">AI Confidence</span>
+              <span class="ext-val" id="extConf" style="color:var(--green)">—</span>
+            </div>
+            <div style="padding:14px 16px;">
+              <button class="btn btn-primary" id="btnIssue" onclick="App.issuePass()">
+                <i class="fas fa-bolt"></i> Accept & Issue Shuttle Pass
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <button class="btn btn-ghost" style="width:auto;padding:10px 20px;" onclick="App.goStep(2)">
+          <i class="fas fa-arrow-left"></i> Back
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 4: Success & Digital Pass ── -->
+    <div class="card" id="step4" style="display:none;text-align:center;">
+      <div class="success-icon"><i class="fas fa-check"></i></div>
+      <div class="success-title">Pass Issued Successfully!</div>
+      <p class="success-sub">
+        Your payment has been verified by AI OCR and your shuttle pass is now active. Screenshot or print the pass below.
+      </p>
+
+      <div class="pass-card-wrap">
+        <div class="shuttle-pass" id="passCard" style="background:linear-gradient(135deg,#4338ca,#0f172a)">
+          <div class="sp-head">
+            <div class="sp-brand">Commander<span>City</span> Shuttle</div>
+            <div class="sp-serial" id="pcSerial">#01</div>
+          </div>
+          <div class="sp-body">
+            <img src="LOGO.png" id="pcPhoto" class="sp-photo" alt="Photo" onerror="this.src='LOGO.png'">
+            <div>
+              <div class="sp-name" id="pcName">MEMBER NAME</div>
+              <div class="sp-cnic" id="pcCnic">CNIC: —</div>
+              <div class="sp-house" id="pcHouse">House: —</div>
+              <div class="sp-type" id="pcType">FULL PASS (PKR 8,000)</div>
+            </div>
+          </div>
+          <div class="sp-footer">
+            <div>
+              <div class="sp-validity-label">Validity Period</div>
+              <div class="sp-validity" id="pcValidity">01-10-2026 to 31-10-2026</div>
+              <div class="sp-ocr-tag">● AUTO-VERIFIED (OCR)</div>
+            </div>
+            <div class="sp-qr" id="pcQr"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-btns">
+        <button class="btn btn-primary" onclick="window.print()">
+          <i class="fas fa-print"></i> Print Pass
+        </button>
+        <button class="btn btn-ghost" onclick="App.reset()">
+          <i class="fas fa-redo"></i> New Payment
+        </button>
+      </div>
+    </div>
 
   </div>
 
   <!-- Scripts -->
   <script src="js/ocr-engine.js"></script>
-  <script src="js/portal.js"></script>
+  <script>
+  const App = {
+    step: 1,
+    passType: 'Full',
+    resident: null,
+    scanned: null,
+    transactions: JSON.parse(localStorage.getItem('cc_txns') || '[]'),
+
+    seedMembers: [
+      { id:1, name:"SHOAIB ALI",      cnic:"42201-5311737-7", houseNo:"R-108 BLOCK G-1",  contact:"0300-1234567", photo:"photos/photo_1.jpeg" },
+      { id:2, name:"FARAH F KHAN",    cnic:"42401-9281726-1", houseNo:"R-396, BLOCK H-2", contact:"0321-9876543", photo:"photos/photo_5.jpeg" },
+      { id:3, name:"SAIMA IMRAN",     cnic:"42201-1928374-3", houseNo:"R-373, BLOCK I-2", contact:"0333-5551234", photo:"photos/photo_9.jpeg" },
+      { id:4, name:"MUHAMMAD USMAN",  cnic:"42201-8172635-5", houseNo:"L-237/238 M-3",    contact:"0345-8889999", photo:"photos/photo_21.jpeg" },
+      { id:5, name:"DR UZMA",         cnic:"42101-7261524-2", houseNo:"R-51 BLOCK C-2",   contact:"0312-3334444", photo:"photos/photo_25.jpeg" }
+    ],
+
+    init() {
+      this.calcFee();
+      this.setupSearch();
+      this.setupDrop();
+    },
+
+    setupSearch() {
+      const inp = document.getElementById('searchInput');
+      if (!inp) return;
+      inp.addEventListener('input', e => this.search(e.target.value));
+      document.addEventListener('click', e => {
+        if (!e.target.closest('.search-wrap'))
+          document.getElementById('searchResults').style.display = 'none';
+      });
+    },
+
+    setupDrop() {
+      const drop = document.getElementById('ocrDrop');
+      if (!drop) return;
+      drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+      drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+      drop.addEventListener('drop', e => {
+        e.preventDefault(); drop.classList.remove('drag-over');
+        const f = e.dataTransfer.files[0];
+        if (f) this.readFile(f);
+      });
+    },
+
+    async search(q) {
+      const res = document.getElementById('searchResults');
+      q = q.trim().toLowerCase();
+      if (!q) { res.style.display = 'none'; return; }
+
+      let members = [];
+      try {
+        const r = await fetch(`/api/members?q=${encodeURIComponent(q)}`);
+        if (r.ok) { const d = await r.json(); members = d.members || []; }
+      } catch(e) {}
+
+      if (!members.length) {
+        members = this.seedMembers.filter(m =>
+          m.name.toLowerCase().includes(q) ||
+          m.cnic.toLowerCase().includes(q) ||
+          m.houseNo.toLowerCase().includes(q) ||
+          String(m.id).includes(q)
+        );
+      }
+
+      if (!members.length) {
+        res.innerHTML = `<div class="resident-item" style="cursor:default;">
+          <div style="color:var(--text-muted);font-size:0.85rem;">No resident found for "<strong style="color:#fff">${q}</strong>"</div>
+          <button style="margin-left:auto;background:none;border:none;color:var(--cyan);font-weight:700;cursor:pointer;font-size:0.8rem;" onclick="App.customResident('${q}')">+ Add as New</button>
+        </div>`;
+        res.style.display = 'block'; return;
+      }
+
+      res.innerHTML = members.map(m => `
+        <div class="resident-item" onclick='App.pickResident(${JSON.stringify(m).replace(/'/g,"&#39;")})'>
+          <img src="${m.photo||'LOGO.png'}" class="res-avatar" onerror="this.src='LOGO.png'" alt="">
+          <div>
+            <div class="res-name">${m.name}</div>
+            <div class="res-meta">CNIC: ${m.cnic} • ${m.houseNo}</div>
+          </div>
+          <div class="res-badge">CC-${String(m.id).padStart(5,'0')}</div>
+        </div>`).join('');
+      res.style.display = 'block';
+    },
+
+    pickResident(m) {
+      this.resident = m;
+      document.getElementById('selName').textContent = m.name;
+      document.getElementById('selId').textContent = `CC-${String(m.id).padStart(5,'0')}`;
+      document.getElementById('selCnic').textContent = m.cnic || 'N/A';
+      document.getElementById('selHouse').textContent = m.houseNo || 'Commander City';
+      const ph = document.getElementById('selPhoto');
+      ph.src = m.photo || 'LOGO.png'; ph.onerror = () => ph.src = 'LOGO.png';
+      document.getElementById('selResident').style.display = 'flex';
+      document.getElementById('searchResults').style.display = 'none';
+      document.getElementById('searchInput').value = m.name;
+      this.toast(`Selected: ${m.name}`, 'info');
+    },
+
+    customResident(name) {
+      this.pickResident({ id: Math.floor(Math.random()*90000+10000), name: name.toUpperCase(), cnic:'Pending', houseNo:'Commander City', contact:'', photo:'LOGO.png' });
+    },
+
+    setPassType(t) {
+      this.passType = t;
+      const f = document.getElementById('optFull'), h = document.getElementById('optHalf');
+      if (t === 'Full') {
+        f.className='pass-opt sel'; h.className='pass-opt';
+        f.querySelector('i').className='fas fa-check-circle'; f.querySelector('i').style.color='var(--cyan)';
+        h.querySelector('i').className='far fa-circle'; h.querySelector('i').style.color='var(--text-muted)';
+      } else {
+        h.className='pass-opt sel'; f.className='pass-opt';
+        h.querySelector('i').className='fas fa-check-circle'; h.querySelector('i').style.color='var(--purple)';
+        f.querySelector('i').className='far fa-circle'; f.querySelector('i').style.color='var(--text-muted)';
+      }
+      this.calcFee();
+    },
+
+    calcFee() {
+      const m = parseInt(document.getElementById('monthSel').value);
+      const y = parseInt(document.getElementById('yearSel').value);
+      const newRate = (y*12+m) >= (2026*12+9);
+      const full = newRate ? 8000 : 6000, half = newRate ? 4000 : 3000;
+      document.getElementById('prFull').textContent = `PKR ${full.toLocaleString()}`;
+      document.getElementById('prHalf').textContent = `PKR ${half.toLocaleString()}`;
+      this.fee = this.passType === 'Half' ? half : full;
+      const el = document.getElementById('amtRequired');
+      if (el) el.textContent = `PKR ${this.fee.toLocaleString()}`;
+    },
+
+    goStep(s) {
+      if (s === 2 && !this.resident) {
+        this.toast('Please search and select your resident profile first.', 'warning'); return;
+      }
+      this.step = s;
+      [1,2,3,4].forEach(i => {
+        document.getElementById(`step${i}`).style.display = i===s ? 'block' : 'none';
+        const wz = document.getElementById(`wz${i}`);
+        wz.className = 'wz-step' + (i===s ? ' active' : i<s ? ' done' : '');
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    reset() {
+      this.scanned = null;
+      document.getElementById('previewWrap').className = 'receipt-preview-wrap';
+      document.getElementById('extractedCard').style.display = 'none';
+      this.goStep(1);
+    },
+
+    copy(text, label) {
+      navigator.clipboard.writeText(text)
+        .then(() => this.toast(`${label} copied!`, 'success'))
+        .catch(() => this.toast(`Copy: ${text}`, 'info'));
+    },
+
+    handleFile(e) { const f = e.target.files[0]; if (f) this.readFile(f); },
+
+    readFile(file) {
+      if (!file.type.startsWith('image/')) { this.toast('Please upload an image file.','error'); return; }
+      const reader = new FileReader();
+      reader.onload = ev => this.runOcr(ev.target.result);
+      reader.readAsDataURL(file);
+    },
+
+    demo(type) {
+      this.toast('Loading demo receipt...','info');
+      const d = ShuttleOCR.generateDemoReceipt(type);
+      this.runOcr(d.dataUrl, d);
+    },
+
+    async runOcr(src, demoMeta=null) {
+      document.getElementById('receiptImg').src = src;
+      const pw = document.getElementById('previewWrap');
+      pw.className = 'receipt-preview-wrap show';
+      const frame = document.getElementById('imgFrame');
+      frame.className = 'receipt-img-frame scan-laser-active';
+      document.getElementById('scanStatus').style.display = 'block';
+      document.getElementById('extractedCard').style.display = 'none';
+      document.getElementById('progressBar').style.width = '0%';
+
+      try {
+        const parsed = await ShuttleOCR.scanReceipt(src, u => {
+          document.getElementById('progressBar').style.width = `${Math.round(u.progress*100)}%`;
+          document.getElementById('statusText').textContent = u.message;
+        });
+        if (demoMeta) {
+          if (!parsed.transactionId || parsed.transactionId==='NOT_DETECTED') parsed.transactionId = demoMeta.tid;
+          if (!parsed.amount) parsed.amount = demoMeta.amount;
+          parsed.provider = demoMeta.provider;
+        }
+        this.scanned = parsed;
+        this.showExtracted(parsed);
+      } catch(err) {
+        this.toast(err.message, 'error');
+      } finally {
+        frame.className = 'receipt-img-frame';
+      }
+    },
+
+    showExtracted(p) {
+      document.getElementById('scanStatus').style.display = 'none';
+      const card = document.getElementById('extractedCard');
+      card.style.display = 'block';
+      document.getElementById('extProvider').textContent = p.provider;
+      document.getElementById('extTid').textContent = p.transactionId;
+      document.getElementById('extAmt').textContent = `PKR ${(p.amount||0).toLocaleString()}`;
+      document.getElementById('extRequired').textContent = `PKR ${this.fee.toLocaleString()}`;
+      document.getElementById('extDate').textContent = p.date;
+      document.getElementById('extConf').textContent = `${p.confidence||92}%`;
+
+      const isDup = this.transactions.some(t => t.tid === p.transactionId && t.status==='ok');
+      const amtOk = p.amount >= this.fee;
+      const badge = document.getElementById('extBadge');
+      const btn = document.getElementById('btnIssue');
+
+      if (isDup) {
+        badge.className='status-badge fail'; badge.innerHTML='<i class="fas fa-ban"></i> DUPLICATE — REJECTED';
+        btn.disabled=true; btn.innerHTML='<i class="fas fa-times"></i> Already Used';
+        this.toast('This Transaction ID was already accepted!','error');
+      } else if (!amtOk) {
+        badge.className='status-badge fail'; badge.innerHTML='<i class="fas fa-exclamation-triangle"></i> UNDERPAID';
+        btn.disabled=true; btn.innerHTML=`<i class="fas fa-times"></i> Needs PKR ${this.fee.toLocaleString()}`;
+        this.toast(`Amount PKR ${p.amount} is less than required PKR ${this.fee}`,'warning');
+      } else {
+        badge.className='status-badge ok'; badge.innerHTML='<i class="fas fa-check-circle"></i> VERIFIED & ACCEPTED';
+        btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> Accept & Issue Shuttle Pass';
+        this.toast('Transaction verified! Ready to issue pass.','success');
+      }
+    },
+
+    async issuePass() {
+      if (!this.resident || !this.scanned) { this.toast('Missing data.','error'); return; }
+      const m = parseInt(document.getElementById('monthSel').value);
+      const y = parseInt(document.getElementById('yearSel').value);
+      const lastDay = new Date(y, m, 0).getDate();
+      const serial = String(this.transactions.filter(t=>t.month===m&&t.year===y).length+1).padStart(2,'0');
+
+      const payload = {
+        memberId: this.resident.id, memberName: this.resident.name,
+        cnic: this.resident.cnic, houseNo: this.resident.houseNo,
+        contact: this.resident.contact, photo: this.resident.photo||'LOGO.png',
+        serialNo: serial, month: m, year: y,
+        passType: this.passType, amount: this.fee,
+        transactionId: this.scanned.transactionId, provider: this.scanned.provider,
+        issueDate: `01-${String(m).padStart(2,'0')}-${y}`,
+        validTill: `${String(lastDay).padStart(2,'0')}-${String(m).padStart(2,'0')}-${y}`
+      };
+
+      // Save to local record
+      this.transactions.unshift({ tid: payload.transactionId, month:m, year:y, status:'ok', ...payload });
+      localStorage.setItem('cc_txns', JSON.stringify(this.transactions));
+
+      // Sync to Google Sheets
+      this.syncGoogleSheets(payload);
+
+      // Try Vercel API
+      try {
+        await fetch('/api/submit-payment', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+      } catch(e) {}
+
+      this.renderPass(payload);
+      this.goStep(4);
+      this.toast('🎉 Shuttle Pass Issued!','success');
+    },
+
+    syncGoogleSheets(pass) {
+      const url = 'https://script.google.com/macros/s/AKfycbyGXUJIPYrAcjE4FHzG97q6_kj95lCVKPgM9hxFANKZZt4_CL1YKukJVmjlRPLuDho/exec';
+      fetch(url, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ type:'SYNC_DATA', passes:[pass], members:[this.resident] }) })
+        .catch(()=>{});
+    },
+
+    renderPass(p) {
+      document.getElementById('pcSerial').textContent = `#${p.serialNo}`;
+      document.getElementById('pcName').textContent = p.memberName;
+      document.getElementById('pcCnic').textContent = `CNIC: ${p.cnic||'N/A'}`;
+      document.getElementById('pcHouse').textContent = `House: ${p.houseNo||'Commander City'}`;
+      document.getElementById('pcType').textContent = `${p.passType.toUpperCase()} PASS (PKR ${p.amount.toLocaleString()})`;
+      document.getElementById('pcValidity').textContent = `${p.issueDate} to ${p.validTill}`;
+      const ph = document.getElementById('pcPhoto'); ph.src = p.photo||'LOGO.png'; ph.onerror=()=>ph.src='LOGO.png';
+
+      const themes = ['#1e3a8a','#065f46','#831843','#701a75','#1e293b','#0e7490','#1d4ed8','#b45309','#047857','#4338ca','#6d28d9','#be123c'];
+      document.getElementById('passCard').style.background = `linear-gradient(135deg,${themes[(p.month-1)%12]},#0f172a)`;
+
+      const qr = document.getElementById('pcQr'); qr.innerHTML='';
+      if (window.QRCode) new QRCode(qr, { text:`CC|${p.serialNo}|${p.memberName}|${p.month}-${p.year}|${p.transactionId}`, width:48, height:48, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
+    },
+
+    toast(msg, type='success') {
+      const t=document.getElementById('toast'), m=document.getElementById('toastMsg'), ic=document.getElementById('toastIcon');
+      m.textContent=msg;
+      const map={success:['fa-check-circle','var(--green)'],error:['fa-times-circle','var(--red)'],warning:['fa-exclamation-triangle','var(--amber)'],info:['fa-info-circle','var(--cyan)']};
+      const [cls,col]=map[type]||map.info;
+      ic.className=`fas ${cls}`; ic.style.color=col;
+      t.classList.add('show');
+      clearTimeout(this._t); this._t=setTimeout(()=>t.classList.remove('show'),4000);
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => App.init());
+  </script>
 </body>
 </html>
