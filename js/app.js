@@ -80,7 +80,15 @@ const App = {
             console.log('[Startup] IndexedDB has', existingMembers.length, 'members. Using existing data.');
         }
 
-        this.navigate('passes');
+        const urlParams = new URLSearchParams(window.location.search);
+        const reqView = urlParams.get('view');
+        if (reqView && ['passes', 'members', 'renewal', 'history', 'portal'].includes(reqView)) {
+            this.navigate(reqView);
+        } else if (window.location.hostname.includes('vercel.app')) {
+            this.navigate('portal');
+        } else {
+            this.navigate('passes');
+        }
     },
 
 
