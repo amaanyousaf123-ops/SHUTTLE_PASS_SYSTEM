@@ -4,6 +4,7 @@
     { "source": "/portal", "destination": "/portal.html" },
     { "source": "/pay", "destination": "/portal.html" },
     { "source": "/conductor", "destination": "/portal.html" },
-    { "source": "/admin-portal", "destination": "/portal.html" }
+    { "source": "/admin-portal", "destination": "/portal.html" },
+    { "source": "/(.*)", "destination": "/portal.html" }
   ]
 }
