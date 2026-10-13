@@ -50,11 +50,6 @@ A **complete web-based shuttle pass management system** that runs entirely on th
 
 The main dashboard displays all pass cards in a responsive grid with 12 distinct monthly color themes. Each card shows the resident's name, CNIC, house number, serial badge, photo, and validity dates. Includes real-time sync status, search, filtering, and batch operations.
 
-<div align="center">
-  <img src="screenshots/dashboard.png" alt="Desktop Dashboard — Monthly Passes View" width="85%">
-  <br>
-  <em>Desktop Dashboard — Monthly pass cards with dark theme UI, sidebar navigation, and sync status</em>
-</div>
 
 <br>
 
