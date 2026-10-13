@@ -1,8 +1,12 @@
-# Customer data — never committed
-data/
-imported_members.json
+# Temporary data & heavy local backups (ignore these)
+data/backups/
+data/excel/
+data/versions/
+data/system_state_backup.json
 
-# Customer / employee photos
+# Business documents containing raw client docs
+pass_photos/
+PICTURES OF EMLOYEES/
 pass_photos/
 photos/
 PICTURES OF EMLOYEES/

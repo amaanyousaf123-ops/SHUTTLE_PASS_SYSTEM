@@ -1,0 +1,21 @@
+{
+  "name": "shuttle-pass-payment-portal",
+  "version": "2.0.0",
+  "description": "Commander City Shuttle Pass System Online Payment Portal with AI/OCR Transaction Scanner",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "shuttle-pass",
+    "payment-portal",
+    "ocr",
+    "vercel",
+    "google-sheets-sync",
+    "jazzcash",
+    "easypaisa"
+  ],
+  "author": "Commander City Operations",
+  "license": "ISC"
+}

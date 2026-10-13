@@ -363,12 +363,13 @@ table{width:100%;border-collapse:collapse}
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     flex-shrink: 0;
+    justify-content: flex-start;
 }
 .cc-photo-frame {
     width: 78px;
-    height: 88px;
+    height: 72px;
     border: 1.5px solid #000000;
     background: #f1f5f9;
     overflow: hidden;
@@ -404,7 +405,7 @@ table{width:100%;border-collapse:collapse}
     color: #ffffff !important;
     border: 1.5px solid #1e293b;
     border-radius: 6px;
-    padding: 2.5px 3px;
+    padding: 4px 3px;
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -412,6 +413,7 @@ table{width:100%;border-collapse:collapse}
     justify-content: center;
     line-height: 1;
     box-shadow: 0 1px 4px rgba(15,23,42,0.15);
+    flex-shrink: 0;
 }
 .cc-serial-lbl {
     font-size: 6.5px;
@@ -419,14 +421,15 @@ table{width:100%;border-collapse:collapse}
     letter-spacing: 0.6px;
     text-transform: uppercase;
     color: #94a3b8 !important;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
     white-space: nowrap;
 }
 .cc-serial-num {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 800;
     color: #38bdf8 !important;
     letter-spacing: 0.5px;
+    line-height: 1;
 }
 .cc-signature-line {
     border-top: 1.5px solid #000000;

@@ -1,0 +1,971 @@
+/* ============================================================
+   Commander City Shuttle Pass — Online Payment Portal Styles
+   Ultra-Premium Modern Aesthetic, Dark Mode & Mobile First
+   ============================================================ */
+
+:root {
+  --bg-page: #060a13;
+  --bg-card: #0c1424;
+  --bg-card-hover: #111d35;
+  --bg-surface: #14223d;
+  --bg-input: #09101d;
+
+  --cyan: #06b6d4;
+  --cyan-light: #22d3ee;
+  --cyan-glow: rgba(6, 182, 212, 0.35);
+  --purple: #8b5cf6;
+  --purple-glow: rgba(139, 92, 246, 0.35);
+  --green: #10b981;
+  --green-glow: rgba(16, 185, 129, 0.35);
+  --amber: #f59e0b;
+  --red: #ef4444;
+
+  --text-main: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(6, 182, 212, 0.5);
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 8px;
+  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.standalone-portal {
+  font-family: var(--font);
+  background-color: var(--bg-page);
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: block;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism Panel */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Layout Container */
+.portal-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px 80px;
+}
+
+/* Header */
+.portal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo-img {
+  height: 48px;
+  width: auto;
+  filter: drop-shadow(0 2px 8px var(--cyan-glow));
+}
+
+.brand-text h1 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #ffffff 30%, var(--cyan-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-text p {
+  font-size: 0.8rem;
+  color: var(--cyan-light);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Header Navigation Tabs */
+.header-nav-tabs {
+  display: flex;
+  background: var(--bg-input);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  gap: 4px;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--cyan-dark), var(--cyan));
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--cyan-glow);
+}
+
+/* Banner / Status Indicator */
+.hero-banner {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.1) 0%, rgba(11, 20, 36, 0.4) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.hero-banner p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  max-width: 650px;
+  margin: 0 auto 16px;
+}
+
+.verified-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--green);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* Step Wizard Progress */
+.wizard-progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.wizard-step {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+}
+
+.wizard-step.active {
+  border-color: var(--cyan);
+  background: rgba(6, 182, 212, 0.08);
+  box-shadow: 0 0 15px var(--cyan-glow);
+}
+
+.wizard-step.completed {
+  border-color: var(--green);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.wizard-step.active .step-number {
+  background: var(--cyan);
+  color: #000;
+}
+
+.wizard-step.completed .step-number {
+  background: var(--green);
+  color: #000;
+}
+
+.step-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: block;
+}
+
+.wizard-step.active .step-title {
+  color: var(--text-main);
+}
+
+/* Section Box */
+.portal-section {
+  padding: 28px;
+  margin-bottom: 24px;
+  transition: var(--transition);
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+}
+
+.section-desc {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 22px;
+}
+
+/* Grid & Inputs */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: var(--transition);
+  outline: none;
+  width: 100%;
+}
+
+.form-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px var(--cyan-glow);
+}
+
+/* Search Dropdown / Autocomplete for Residents */
+.resident-search-wrapper {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.resident-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius-sm);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+  margin-top: 4px;
+}
+
+.resident-item {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: var(--transition);
+}
+
+.resident-item:hover {
+  background: rgba(6, 182, 212, 0.12);
+}
+
+.resident-avatar {
+  width: 42px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #000;
+  border: 1px solid var(--border);
+}
+
+/* Resident Profile Card */
+.resident-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  margin-bottom: 24px;
+}
+
+.resident-card-photo {
+  width: 70px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  border: 2px solid var(--cyan);
+  box-shadow: 0 4px 12px var(--cyan-glow);
+}
+
+.resident-card-info h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.resident-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.resident-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Pass Type Selector Cards */
+.pass-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.pass-card-option {
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+
+.pass-card-option:hover {
+  border-color: rgba(6, 182, 212, 0.5);
+  transform: translateY(-2px);
+}
+
+.pass-card-option.selected {
+  border-color: var(--cyan);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(11, 20, 36, 0.8));
+  box-shadow: 0 6px 20px var(--cyan-glow);
+}
+
+.pass-option-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pass-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--bg-surface);
+  color: var(--cyan-light);
+  text-transform: uppercase;
+}
+
+.pass-price {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.pass-validity {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Payment Methods Grid */
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.payment-method-card {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+
+.payment-method-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pm-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pm-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.pm-meezan { background: #0f2744; color: #38bdf8; }
+.pm-jazz { background: #eb1c24; color: #fff; }
+.pm-easy { background: #00a950; color: #fff; }
+.pm-raast { background: #7c3aed; color: #fff; }
+
+.pm-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.pm-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.copy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-input);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.copy-btn {
+  background: transparent;
+  border: none;
+  color: var(--cyan-light);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.copy-btn:hover {
+  background: rgba(6, 182, 212, 0.2);
+}
+
+/* ============================================================
+   AI OCR Receipt Scanner Interface
+   ============================================================ */
+.ocr-scanner-box {
+  border: 2px dashed rgba(6, 182, 212, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 30px 20px;
+  text-align: center;
+  background: rgba(6, 182, 212, 0.03);
+  position: relative;
+  transition: var(--transition);
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.ocr-scanner-box:hover, .ocr-scanner-box.drag-over {
+  border-color: var(--cyan);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.ocr-upload-icon {
+  font-size: 3rem;
+  color: var(--cyan);
+  margin-bottom: 12px;
+  animation: float-icon 3s ease-in-out infinite;
+}
+
+@keyframes float-icon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.ocr-scanner-box h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.ocr-scanner-box p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Demo Receipt Buttons */
+.demo-receipts-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.demo-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-demo {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.btn-demo:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: var(--cyan);
+  color: var(--cyan-light);
+}
+
+/* Image Preview & Holographic Laser Scanning Effect */
+.receipt-preview-container {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+@media (max-width: 768px) {
+  .receipt-preview-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.receipt-image-frame {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid var(--border);
+  background: #000;
+  max-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.receipt-image-frame img {
+  width: 100%;
+  height: auto;
+  max-height: 480px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Laser Scanning Line Animation */
+.scan-laser-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--cyan-light), #fff, var(--cyan-light), transparent);
+  box-shadow: 0 0 15px 4px var(--cyan), 0 0 30px 8px var(--cyan);
+  animation: laser-scan 2.2s ease-in-out infinite alternate;
+  z-index: 10;
+  display: none;
+}
+
+.scan-laser-active .scan-laser-line {
+  display: block;
+}
+
+@keyframes laser-scan {
+  0% { top: 2%; opacity: 0.9; }
+  100% { top: 96%; opacity: 0.9; }
+}
+
+/* Scanning Progress Indicator */
+.scanning-status-card {
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  transition: width 0.3s ease;
+}
+
+/* Extracted Transaction Card */
+.extracted-card {
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.extracted-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.match-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.status-accepted {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--green);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.status-mismatch {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.status-pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--amber);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.extracted-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+
+.extracted-field .label {
+  color: var(--text-secondary);
+}
+
+.extracted-field .val {
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Big Action Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, var(--cyan-dark), var(--cyan));
+  color: #000;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 14px 28px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: var(--transition);
+  box-shadow: 0 4px 16px var(--cyan-glow);
+  width: 100%;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px var(--cyan-glow);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================================
+   Pass Card Component (CNIC 85.6mm x 54mm Physical Standard)
+   ============================================================ */
+.pass-result-section {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.pass-card-container {
+  display: flex;
+  justify-content: center;
+  margin: 24px auto;
+}
+
+.shuttle-pass-card {
+  width: 380px;
+  height: 240px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border: 2px solid rgba(6, 182, 212, 0.6);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+  padding: 14px 16px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+}
+
+.pass-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pass-card-brand {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.pass-card-brand span {
+  color: var(--cyan);
+}
+
+.pass-serial-pill {
+  background: #fff;
+  color: #000;
+  font-weight: 900;
+  font-size: 0.95rem;
+  padding: 2px 10px;
+  border-radius: 6px;
+}
+
+.pass-card-body {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.pass-card-photo {
+  width: 65px;
+  height: 75px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1.5px solid #fff;
+  background: #000;
+}
+
+.pass-card-details {
+  flex: 1;
+}
+
+.pass-card-details .name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.pass-card-details .cnic, .pass-card-details .house {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.pass-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem;
+}
+
+.pass-card-qr {
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.pass-card-qr img {
+  width: 100%;
+  height: 100%;
+}
+
+/* Conductor QR Scanner Box */
+.conductor-scanner-wrapper {
+  max-width: 450px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.video-viewfinder {
+  width: 100%;
+  height: 320px;
+  background: #000;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--cyan);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+/* Toast Notification */
+.portal-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.portal-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Print Utilities */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .portal-header, .wizard-progress, .portal-section, .btn-primary, .header-nav-tabs, .demo-receipts-bar {
+    display: none !important;
+  }
+  .pass-card-container {
+    margin: 0 !important;
+  }
+  .shuttle-pass-card {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+}

@@ -285,7 +285,7 @@ const DB = {
                 issueDate: `01-${mm}-${year}`,
                 validTill: `${lastDay}-${mm}-${year}`,
                 status: 'active',
-                verified: false,
+                verified: true,
                 incomplete: isNew,   // highlight flag for new/unknown members
                 paymentDate: new Date().toISOString(),
                 createdAt: new Date().toISOString()
@@ -305,7 +305,7 @@ const DB = {
 
 
     /* Issue a specific serial number chosen by the user (manual assignment) */
-    async processMemberPaymentWithSerial(memberId, month, year, serialNo, amount = null, notes = '', passType = 'Full') {
+    async processMemberPaymentWithSerial(memberId, month, year, serialNo, amount = null, notes = '', passType = 'Full', paymentMethod = 'Cash', paymentProof = null) {
         const member = await this.get('members', memberId);
         if (!member) throw new Error('Member not found');
 
@@ -321,6 +321,9 @@ const DB = {
         // Free passes are always PKR 0; override any supplied amount
         const finalAmount = passTypeVal === 'Free' ? 0 : ((amount !== null && amount !== undefined && amount !== '' && Number(amount) > 0) ? Number(amount) : defaultFee);
         const issueDay = '01'; // Free passes always start from the 1st
+
+        // Payment method: Cash / Online (Free passes are not transactions)
+        const methodVal = passTypeVal === 'Free' ? 'Free' : (paymentMethod === 'Online' ? 'Online' : 'Cash');
 
         const serialStr = String(serialNo);
         const mm = String(month).padStart(2, '0');
@@ -339,10 +342,11 @@ const DB = {
             year: year,
             passType: passTypeVal,
             amount: finalAmount,
+            paymentMethod: methodVal,
             issueDate: `${issueDay}-${mm}-${year}`,
             validTill: `${String(lastDay).padStart(2, '0')}-${mm}-${year}`,
             status: 'active',
-            verified: false,
+            verified: true,
             paymentDate: new Date().toISOString(),
             createdAt: new Date().toISOString()
         };
@@ -359,6 +363,8 @@ const DB = {
             month,
             year,
             amount: finalAmount,
+            paymentMethod: methodVal,
+            paymentProof: paymentProof || null,
             notes,
             paidAt: new Date().toISOString()
         });
@@ -367,7 +373,7 @@ const DB = {
     },
 
     /* Record payment for a member & issue next sequential card for the month */
-    async processMemberPayment(memberId, month, year, amount = null, notes = '', passType = 'Full') {
+    async processMemberPayment(memberId, month, year, amount = null, notes = '', passType = 'Full', paymentMethod = 'Cash', paymentProof = null) {
         const member = await this.get('members', memberId);
         if (!member) throw new Error('Member not found');
 
@@ -383,6 +389,9 @@ const DB = {
         // Free passes are always PKR 0
         const finalAmount = passTypeVal === 'Free' ? 0 : ((amount !== null && amount !== undefined && amount !== '' && Number(amount) > 0) ? Number(amount) : defaultFee);
         const issueDay = '01';
+
+        // Payment method: Cash / Online (Free passes are not transactions)
+        const methodVal = passTypeVal === 'Free' ? 'Free' : (paymentMethod === 'Online' ? 'Online' : 'Cash');
 
         // Get next serial according to exact payment sequence order
         const serialNo = String(await this.getNextPaymentSequenceSerial(month, year));
@@ -401,10 +410,11 @@ const DB = {
             year: year,
             passType: passTypeVal,
             amount: finalAmount,
+            paymentMethod: methodVal,
             issueDate: `${issueDay}-${mm}-${year}`,
             validTill: `${String(lastDay).padStart(2, '0')}-${mm}-${year}`,
             status: 'active',
-            verified: false,
+            verified: true,
             paymentDate: new Date().toISOString(),
             createdAt: new Date().toISOString()
         };
@@ -421,6 +431,8 @@ const DB = {
             month,
             year,
             amount: finalAmount,
+            paymentMethod: methodVal,
+            paymentProof: paymentProof || null,
             notes,
             paidAt: new Date().toISOString()
         });
@@ -429,7 +441,7 @@ const DB = {
     },
 
     /* ── Bulk Renewal of active passes ── */
-    async renewMonth(sM, sY, tM, tY) {
+    async renewMonth(sM, sY, tM, tY, paymentMethod = 'Cash', paymentProof = null) {
         const sourcePasses = await this.getPassesForMonth(sM, sY);
         const targetPasses = await this.getPassesForMonth(tM, tY);
         const targetMemberIds = new Set(targetPasses.map(p => p.memberId));
@@ -444,6 +456,7 @@ const DB = {
                 const passType = sp.passType || 'Full';
                 const amount = this.getFeeForMonth(tM, tY, passType); // 0 for Free passes
                 const issueDay = '01';
+                const methodVal = passType === 'Free' ? 'Free' : (paymentMethod === 'Online' ? 'Online' : 'Cash');
 
                 const passData = {
                     memberId: sp.memberId,
@@ -458,10 +471,11 @@ const DB = {
                     year: tY,
                     passType: passType,
                     amount: amount,
+                    paymentMethod: methodVal,
                     issueDate: `${issueDay}-${mm}-${tY}`,
                     validTill: `${String(lastDay).padStart(2, '0')}-${mm}-${tY}`,
                     status: 'active',
-                    verified: false,
+                    verified: true,
                     paymentDate: new Date().toISOString(),
                     createdAt: new Date().toISOString()
                 };
@@ -477,6 +491,8 @@ const DB = {
                     month: tM,
                     year: tY,
                     amount,
+                    paymentMethod: methodVal,
+                    paymentProof: paymentProof || null,
                     notes: `Auto-Renew (${passType} Pass)`,
                     paidAt: new Date().toISOString()
                 });
@@ -582,6 +598,7 @@ const DB = {
                     issueDate: `01-${mm}-${curYear}`,
                     validTill: `${String(lastDay).padStart(2, '0')}-${mm}-${curYear}`,
                     status: 'active',
+                    verified: true,
                     sourceFile: rec.sourceFile || 'D:\\Shuttle Pass',
                     paymentDate: new Date().toISOString(),
                     createdAt: new Date().toISOString()
@@ -622,62 +639,6 @@ const DB = {
         return true;
     },
 
-    // Sync verification status from server state into local IndexedDB
-    // Uses putManySilent to update IndexedDB in a single transaction without firing data-changed loops
-    async pullServerState() {
-        if (this._isRestoring || this._isPulling) return;
-        this._isPulling = true;
-        try {
-            const res = await fetch('/api/system-state');
-            if (!res.ok) return;
-            const data = await res.json();
-            if (!data.passes || !Array.isArray(data.passes)) return;
-
-            const localPasses = await this.getAll('passes');
-            const toUpdate = [];
-
-            for (const serverPass of data.passes) {
-                const localPass = localPasses.find(p =>
-                    p.id === serverPass.id ||
-                    String(p.id) === String(serverPass.id) ||
-                    (String(p.serialNo) === String(serverPass.serialNo) && Number(p.month) === Number(serverPass.month) && Number(p.year) === Number(serverPass.year))
-                );
-                if (localPass) {
-                    let changed = false;
-                    if (serverPass.verified === true && localPass.verified !== true) {
-                        localPass.verified = true;
-                        localPass.verifiedBy = serverPass.verifiedBy;
-                        localPass.verifiedAt = serverPass.verifiedAt;
-                        localPass.status = 'active';
-                        changed = true;
-                    }
-                    if (serverPass.status === 'on_hold' && localPass.status !== 'on_hold') {
-                        localPass.status = 'on_hold';
-                        localPass.notes = serverPass.notes;
-                        changed = true;
-                    }
-                    if (changed) {
-                        toUpdate.push(localPass);
-                    }
-                }
-            }
-
-            if (toUpdate.length > 0) {
-                await this.putManySilent('passes', toUpdate);
-                console.log(`[PullServer] Updated ${toUpdate.length} pass verification statuses from Manager approval.`);
-                if (typeof App !== 'undefined') {
-                    if (typeof App.updatePendingBadge === 'function') App.updatePendingBadge();
-                    if (App.currentView === 'passes' && typeof App._renderCards === 'function') App._renderCards();
-                    if (App.currentView === 'verification' && typeof App.vVerification === 'function') App.vVerification(document.getElementById('appView'));
-                }
-            }
-        } catch (e) {
-            // Silently ignore pull errors
-        } finally {
-            this._isPulling = false;
-        }
-    },
-
     // Immediate, awaitable sync — used for manual save button and restoreSystem
     async syncNow(isForce = false) {
         const dot  = document.getElementById('syncBadge')?.querySelector('.sync-dot');
@@ -703,38 +664,6 @@ const DB = {
             if (resp.ok) {
                 setSyncState('idle', 'Synced ✔');
                 console.log('[Sync] Data saved to data/ folder successfully.');
-
-                // Apply any server-corrected verified passes back into local IndexedDB silently
-                try {
-                    const respData = await resp.json();
-                    if (respData.verifiedPasses && respData.verifiedPasses.length > 0) {
-                        const localPasses = await this.getAll('passes');
-                        const toUpdate = [];
-                        for (const vp of respData.verifiedPasses) {
-                            const localPass = localPasses.find(p =>
-                                p.id === vp.id ||
-                                String(p.id) === String(vp.id) ||
-                                (String(p.serialNo) === String(vp.serialNo) && Number(p.month) === Number(vp.month) && Number(p.year) === Number(vp.year))
-                            );
-                            if (localPass && localPass.verified !== true) {
-                                localPass.verified = true;
-                                localPass.verifiedBy = vp.verifiedBy;
-                                localPass.verifiedAt = vp.verifiedAt;
-                                localPass.status = 'active';
-                                toUpdate.push(localPass);
-                            }
-                        }
-                        if (toUpdate.length > 0) {
-                            console.log(`[Sync] Silently updating ${toUpdate.length} verified passes in IndexedDB...`);
-                            await this.putManySilent('passes', toUpdate);
-                            if (typeof App !== 'undefined') {
-                                if (typeof App.updatePendingBadge === 'function') App.updatePendingBadge();
-                                if (App.currentView === 'passes' && typeof App._renderCards === 'function') App._renderCards();
-                                if (App.currentView === 'verification' && typeof App.vVerification === 'function') App.vVerification(document.getElementById('appView'));
-                            }
-                        }
-                    }
-                } catch(e) { /* resp.json() parse error — ignore */ }
             } else {
                 setSyncState('error', 'Sync Error');
                 console.error('[Sync] Server returned error:', resp.status);
@@ -758,39 +687,11 @@ const DB = {
 };
 
 document.addEventListener('data-changed', () => {
-    // Prevent syncing during full restore process or while pulling server state
-    if (!DB._isRestoring && !DB._isPulling) {
+    // Prevent syncing during full restore process
+    if (!DB._isRestoring) {
         DB.syncToFolder();
     }
 });
-
-// Real-time instant manager approval listener via SSE (Server-Sent Events)
-function initApprovalEventListener() {
-    if (typeof EventSource === 'undefined') return;
-    try {
-        const es = new EventSource('/api/events');
-        es.onmessage = (e) => {
-            try {
-                const eventData = JSON.parse(e.data);
-                if (eventData.type === 'pass-approved' || eventData.type === 'bulk-approved' || eventData.type === 'pass-rejected') {
-                    console.log('[SSE] Instant manager approval received:', eventData);
-                    DB.pullServerState();
-                }
-            } catch (err) {}
-        };
-        es.onerror = () => {
-            // EventSource auto-reconnects automatically
-        };
-    } catch (e) {}
-}
-initApprovalEventListener();
-
-// Fallback poll every 5 seconds
-setInterval(() => {
-    if (!DB._isRestoring) {
-        DB.pullServerState();
-    }
-}, 5000);
 
 // Auto-save every 5 minutes (300000 ms)
 setInterval(() => {

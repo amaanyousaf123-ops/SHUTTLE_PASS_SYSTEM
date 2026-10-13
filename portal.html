@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commander City Shuttle Pass — Online Payment Portal & AI OCR</title>
+  <meta name="description" content="Online payment portal for Commander City Shuttle Passes with AI OCR transaction verification, instant digital pass issuance, and Google Sheets sync.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Portal CSS -->
+  <link rel="stylesheet" href="css/portal.css">
+  
+  <!-- QRCode.js for dynamic pass card QR code generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Tesseract.js OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body class="standalone-portal">
+
+  <!-- Toast Alert -->
+  <div class="portal-toast" id="portalToast">
+    <i class="fas fa-check-circle" id="toastIcon" style="color:var(--green);font-size:1.2rem;"></i>
+    <span id="toastMessage">Operation successful</span>
+  </div>
+
+  <div class="portal-container">
+    
+    <!-- Top Header -->
+    <header class="portal-header glass-panel">
+      <div class="brand-wrapper">
+        <img src="LOGO.png" alt="Commander City Logo" class="brand-logo-img" onerror="this.style.display='none'">
+        <div class="brand-text">
+          <h1>Commander<span>City</span></h1>
+          <p>Shuttle Pass Online Portal</p>
+        </div>
+      </div>
+
+      <nav class="header-nav-tabs">
+        <button class="tab-btn active" id="tabBtnPassenger" onclick="PortalApp.switchTab('passenger')">
+          <i class="fas fa-id-card"></i> <span>Passenger Portal</span>
+        </button>
+        <button class="tab-btn" id="tabBtnConductor" onclick="PortalApp.switchTab('conductor')">
+          <i class="fas fa-qrcode"></i> <span>Conductor Verifier</span>
+        </button>
+        <button class="tab-btn" id="tabBtnAdmin" onclick="PortalApp.switchTab('admin')">
+          <i class="fas fa-shield-alt"></i> <span>Admin Desk</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- ========================================================
+         VIEW 1: PASSENGER ONLINE PAYMENT PORTAL
+         ======================================================== -->
+    <main id="viewPassenger">
+      
+      <!-- Hero Banner -->
+      <section class="hero-banner">
+        <h2>Renew Your Shuttle Pass Online</h2>
+        <p>Transfer the fee via JazzCash, EasyPaisa, or Online Bank Transfer. Upload your receipt and our AI OCR scanner will verify your transaction and issue your digital pass instantly!</p>
+        <div class="verified-pill">
+          <i class="fas fa-bolt"></i> Instant AI Verification • Zero Wait Time
+        </div>
+      </section>
+
+      <!-- Wizard Progress Indicators -->
+      <div class="wizard-progress">
+        <div class="wizard-step active" id="wizardStep1">
+          <span class="step-number">1</span>
+          <span class="step-title">Select Pass</span>
+        </div>
+        <div class="wizard-step" id="wizardStep2">
+          <span class="step-number">2</span>
+          <span class="step-title">Bank Details</span>
+        </div>
+        <div class="wizard-step" id="wizardStep3">
+          <span class="step-number">3</span>
+          <span class="step-title">AI OCR Scan</span>
+        </div>
+        <div class="wizard-step" id="wizardStep4">
+          <span class="step-number">4</span>
+          <span class="step-title">Pass Issued</span>
+        </div>
+      </div>
+
+      <!-- STEP 1: Resident & Pass Selection -->
+      <section class="portal-section glass-panel" id="sectionStep1">
+        <h2 class="section-title"><i class="fas fa-user-check" style="color:var(--cyan)"></i> Step 1: Resident Identification & Pass Period</h2>
+        <p class="section-desc">Search your registered profile by CNIC, Member Code, or Name to attach your pass.</p>
+
+        <!-- Search Box -->
+        <div class="resident-search-wrapper">
+          <label class="form-label" for="residentSearchInput">Search Resident (CNIC, Name, or Member ID)</label>
+          <div style="position:relative;margin-top:6px;">
+            <input type="text" id="residentSearchInput" class="form-input" placeholder="e.g. 42201-5311737-7, Shoaib Ali, or CC-00001..." autocomplete="off">
+            <i class="fas fa-search" style="position:absolute;right:14px;top:15px;color:var(--text-muted)"></i>
+          </div>
+          <div class="resident-results" id="residentSearchResults" style="display:none;"></div>
+        </div>
+
+        <!-- Selected Resident Card Preview -->
+        <div class="resident-card" id="selectedResidentCard" style="display:none;">
+          <img src="LOGO.png" alt="Resident Photo" class="resident-card-photo" id="selectedResidentPhoto">
+          <div class="resident-card-info">
+            <h3 id="selectedResidentName">Selected Resident</h3>
+            <div class="resident-meta">
+              <span class="resident-meta-item"><i class="fas fa-id-badge" style="color:var(--cyan)"></i> <span id="selectedResidentId">CC-00000</span></span>
+              <span class="resident-meta-item"><i class="fas fa-id-card" style="color:var(--purple)"></i> <span id="selectedResidentCnic">42201-XXXXXXX-X</span></span>
+              <span class="resident-meta-item"><i class="fas fa-home" style="color:var(--green)"></i> <span id="selectedResidentHouse">House No: Block H</span></span>
+              <span class="resident-meta-item"><i class="fas fa-phone" style="color:var(--amber)"></i> <span id="selectedResidentContact">0300-XXXXXXX</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Month & Year Grid -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="passMonthSelect">Pass Month</label>
+            <select id="passMonthSelect" class="form-input" onchange="PortalApp.updateFeeCalculation()">
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10" selected>October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="passYearSelect">Pass Year</label>
+            <select id="passYearSelect" class="form-input" onchange="PortalApp.updateFeeCalculation()">
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Pass Type Selector Cards -->
+        <label class="form-label" style="margin-bottom:10px;display:block;">Select Pass Category</label>
+        <div class="pass-type-grid">
+          <div class="pass-card-option selected" id="optFullPass" onclick="PortalApp.selectPassType('Full')">
+            <div class="pass-option-header">
+              <span class="pass-badge">Standard Monthly</span>
+              <i class="fas fa-check-circle" style="color:var(--cyan);font-size:1.2rem;"></i>
+            </div>
+            <div class="pass-price" id="displayFullPrice">PKR 8,000</div>
+            <div class="pass-validity">Full Month Unlimited Shuttle Access (Both Ways)</div>
+          </div>
+
+          <div class="pass-card-option" id="optHalfPass" onclick="PortalApp.selectPassType('Half')">
+            <div class="pass-option-header">
+              <span class="pass-badge" style="color:var(--purple)">15 Days / Half</span>
+              <i class="far fa-circle" style="color:var(--text-muted);font-size:1.2rem;"></i>
+            </div>
+            <div class="pass-price" id="displayHalfPrice">PKR 4,000</div>
+            <div class="pass-validity">15 Days Validity (Half Month Shuttle Pass)</div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="PortalApp.goToStep(2)" id="btnStep1Continue">
+          <span>Proceed to Payment Transfer</span> <i class="fas fa-arrow-right"></i>
+        </button>
+      </section>
+
+      <!-- STEP 2: Official Bank Transfer Details -->
+      <section class="portal-section glass-panel" id="sectionStep2" style="display:none;">
+        <h2 class="section-title"><i class="fas fa-university" style="color:var(--green)"></i> Step 2: Transfer Required Fee</h2>
+        <p class="section-desc">Transfer the exact fee of <strong id="transferRequiredAmount" style="color:var(--cyan)">PKR 8,000</strong> to any of the official Commander City accounts below and take a screenshot of your receipt.</p>
+
+        <div class="payment-methods-grid">
+          <!-- Meezan Bank -->
+          <div class="payment-method-card">
+            <div class="pm-header">
+              <div class="pm-icon-wrap pm-meezan"><i class="fas fa-building-columns"></i></div>
+              <div>
+                <div class="pm-title">Meezan Bank</div>
+                <div class="pm-subtitle">Commander City Shuttle Service</div>
+              </div>
+            </div>
+            <div class="copy-row">
+              <span>A/C: <strong>0102-0105847291</strong></span>
+              <button class="copy-btn" onclick="PortalApp.copyToClipboard('01020105847291', 'Meezan Account Number')">
+                <i class="far fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="copy-row">
+              <span style="font-size:0.75rem;">IBAN: PK42MEZN0001020105847291</span>
+              <button class="copy-btn" onclick="PortalApp.copyToClipboard('PK42MEZN0001020105847291', 'IBAN')">
+                <i class="far fa-copy"></i> Copy
+              </button>
+            </div>
+          </div>
+
+          <!-- JazzCash -->
+          <div class="payment-method-card">
+            <div class="pm-header">
+              <div class="pm-icon-wrap pm-jazz"><i class="fas fa-mobile-screen"></i></div>
+              <div>
+                <div class="pm-title">JazzCash Account</div>
+                <div class="pm-subtitle">Commander City Shuttle</div>
+              </div>
+            </div>
+            <div class="copy-row">
+              <span>Mobile: <strong>0300-8271629</strong></span>
+              <button class="copy-btn" onclick="PortalApp.copyToClipboard('03008271629', 'JazzCash Number')">
+                <i class="far fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="copy-row">
+              <span>Title: Commander Shuttle</span>
+              <span style="color:var(--green);font-size:0.75rem;font-weight:700;">● Active</span>
+            </div>
+          </div>
+
+          <!-- EasyPaisa -->
+          <div class="payment-method-card">
+            <div class="pm-header">
+              <div class="pm-icon-wrap pm-easy"><i class="fas fa-wallet"></i></div>
+              <div>
+                <div class="pm-title">EasyPaisa Account</div>
+                <div class="pm-subtitle">Commander Shuttle Service</div>
+              </div>
+            </div>
+            <div class="copy-row">
+              <span>Mobile: <strong>0300-8271629</strong></span>
+              <button class="copy-btn" onclick="PortalApp.copyToClipboard('03008271629', 'EasyPaisa Number')">
+                <i class="far fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="copy-row">
+              <span>Title: Commander City</span>
+              <span style="color:var(--green);font-size:0.75rem;font-weight:700;">● Active</span>
+            </div>
+          </div>
+
+          <!-- Raast Instant Payment -->
+          <div class="payment-method-card">
+            <div class="pm-header">
+              <div class="pm-icon-wrap pm-raast"><i class="fas fa-bolt"></i></div>
+              <div>
+                <div class="pm-title">Raast Instant ID</div>
+                <div class="pm-subtitle">State Bank of Pakistan Raast</div>
+              </div>
+            </div>
+            <div class="copy-row">
+              <span>Raast ID: <strong>03008271629</strong></span>
+              <button class="copy-btn" onclick="PortalApp.copyToClipboard('03008271629', 'Raast ID')">
+                <i class="far fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="copy-row">
+              <span>Transfer Fee: <strong>PKR 0 (Free)</strong></span>
+              <span style="color:var(--cyan-light);font-size:0.75rem;font-weight:700;">Zero Fee</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:16px;">
+          <button class="btn-primary" style="background:var(--bg-surface);color:#fff;width:auto;flex:1;" onclick="PortalApp.goToStep(1)">
+            <i class="fas fa-arrow-left"></i> Back
+          </button>
+          <button class="btn-primary" style="flex:2;" onclick="PortalApp.goToStep(3)">
+            <span>I Have Paid — Scan Receipt with AI OCR</span> <i class="fas fa-camera"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- STEP 3: AI / OCR Receipt Scanner -->
+      <section class="portal-section glass-panel" id="sectionStep3" style="display:none;">
+        <h2 class="section-title"><i class="fas fa-brain" style="color:var(--purple)"></i> Step 3: AI Transaction OCR Scanner</h2>
+        <p class="section-desc">Upload a screenshot of your payment receipt (JazzCash, EasyPaisa, Bank Slip). Our AI engine extracts the Transaction ID, Amount, and Date, then accepts valid payments instantly.</p>
+
+        <!-- Quick 1-Click Demo Receipts for instant testing -->
+        <div class="demo-receipts-bar">
+          <span class="demo-title"><i class="fas fa-vial"></i> Quick Test:</span>
+          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('jazzcash_8000')">
+            <i class="fas fa-receipt" style="color:#eb1c24"></i> JazzCash (PKR 8,000)
+          </button>
+          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('easypaisa_4000')">
+            <i class="fas fa-receipt" style="color:#00a950"></i> EasyPaisa (PKR 4,000)
+          </button>
+          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('meezan_8000')">
+            <i class="fas fa-receipt" style="color:#38bdf8"></i> Meezan Bank (PKR 8,000)
+          </button>
+          <button class="btn-demo" onclick="PortalApp.loadDemoReceipt('invalid_test')" style="border-color:rgba(239,68,68,0.4);color:#fca5a5;">
+            <i class="fas fa-times-circle" style="color:#ef4444"></i> Test Rejection
+          </button>
+        </div>
+
+        <!-- Receipt Drag & Drop / Upload Area -->
+        <div class="ocr-scanner-box" id="ocrDropZone" onclick="document.getElementById('receiptFileInput').click()">
+          <input type="file" id="receiptFileInput" accept="image/*" style="display:none;" onchange="PortalApp.handleReceiptUpload(event)">
+          <div class="ocr-upload-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+          <h3>Click to Upload or Drag & Drop Payment Receipt</h3>
+          <p>Supports Screenshots from JazzCash, EasyPaisa, Meezan, Alfalah, HBL, UBL, Raast, or Camera Photos</p>
+        </div>
+
+        <!-- Scanning & Preview Viewport -->
+        <div class="receipt-preview-container" id="receiptPreviewContainer" style="display:none;">
+          
+          <!-- Image Frame with Holographic Laser Scanner -->
+          <div class="receipt-image-frame" id="receiptImageFrame">
+            <div class="scan-laser-line" id="scanLaserLine"></div>
+            <img id="receiptImagePreview" src="" alt="Receipt Preview">
+          </div>
+
+          <!-- Status & Extracted Fields -->
+          <div class="scanning-status-card">
+            
+            <div id="scanningStatusBox">
+              <h3 style="font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-spinner fa-spin" style="color:var(--cyan)" id="scanningSpinner"></i>
+                <span id="scanningStatusText">Scanning Receipt with AI OCR...</span>
+              </h3>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="ocrProgressBar"></div>
+              </div>
+              <p style="font-size:0.8rem;color:var(--text-secondary);" id="ocrStatusSubtext">Preprocessing image and detecting characters...</p>
+            </div>
+
+            <!-- Extracted Card -->
+            <div class="extracted-card" id="extractedCard" style="display:none;margin-top:16px;">
+              <div class="extracted-header">
+                <div>
+                  <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Provider</span>
+                  <div style="font-size:1.1rem;font-weight:800;color:#fff;" id="extractedProvider">JazzCash</div>
+                </div>
+                <div class="match-status-badge status-accepted" id="extractedMatchBadge">
+                  <i class="fas fa-check-circle"></i> <span>VERIFIED & ACCEPTED</span>
+                </div>
+              </div>
+
+              <div class="extracted-field">
+                <span class="label">Transaction ID (TID)</span>
+                <span class="val" id="extractedTid">0129849201</span>
+              </div>
+
+              <div class="extracted-field">
+                <span class="label">Extracted Amount</span>
+                <span class="val" id="extractedAmount" style="color:var(--cyan-light)">PKR 8,000</span>
+              </div>
+
+              <div class="extracted-field">
+                <span class="label">Required Pass Fee</span>
+                <span class="val" id="extractedRequiredFee">PKR 8,000</span>
+              </div>
+
+              <div class="extracted-field">
+                <span class="label">Transaction Date</span>
+                <span class="val" id="extractedDate">12 Oct 2026</span>
+              </div>
+
+              <div class="extracted-field">
+                <span class="label">Recipient Title</span>
+                <span class="val" id="extractedRecipient">Commander City Shuttle</span>
+              </div>
+
+              <div class="extracted-field">
+                <span class="label">AI Confidence Score</span>
+                <span class="val" id="extractedConfidence" style="color:var(--green)">94%</span>
+              </div>
+
+              <div style="margin-top:18px;">
+                <button class="btn-primary" id="btnAcceptAndIssuePass" onclick="PortalApp.confirmAndIssuePass()">
+                  <i class="fas fa-id-card"></i> <span>Accept Transaction & Generate Pass</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- STEP 4: Success & Printable Pass Card -->
+      <section class="portal-section glass-panel pass-result-section" id="sectionStep4" style="display:none;">
+        <div style="display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:50%;background:rgba(16,185,129,0.15);color:var(--green);font-size:2rem;margin-bottom:14px;border:1px solid rgba(16,185,129,0.3);">
+          <i class="fas fa-check"></i>
+        </div>
+        <h2 style="font-size:1.8rem;font-weight:900;color:#fff;margin-bottom:4px;">Transaction Verified & Accepted!</h2>
+        <p style="color:var(--text-secondary);max-width:550px;margin:0 auto 20px;">
+          Your payment has been auto-verified by AI OCR and recorded. Your shuttle pass is now active and synced to the Google Sheets master register!
+        </p>
+
+        <!-- Digital Pass Card (85.6mm x 54mm CNIC standard) -->
+        <div class="pass-card-container">
+          <div class="shuttle-pass-card" id="printablePassCard">
+            <!-- Header -->
+            <div class="pass-card-header">
+              <div class="pass-card-brand">Commander<span>City</span> Shuttle</div>
+              <div class="pass-serial-pill" id="cardSerialNo">#01</div>
+            </div>
+
+            <!-- Body -->
+            <div class="pass-card-body">
+              <img src="LOGO.png" alt="Photo" class="pass-card-photo" id="cardPhoto">
+              <div class="pass-card-details">
+                <div class="name" id="cardMemberName">SHOAIB ALI</div>
+                <div class="cnic" id="cardCnic">CNIC: 42201-5311737-7</div>
+                <div class="house" id="cardHouse">House: R-108 Block G-1</div>
+                <div style="margin-top:4px;font-size:0.72rem;color:var(--cyan-light);font-weight:700;" id="cardPassType">
+                  FULL MONTH PASS (PKR 8,000)
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="pass-card-footer">
+              <div>
+                <div style="color:var(--text-muted);font-size:0.65rem;">VALIDITY PERIOD</div>
+                <div style="font-weight:800;font-size:0.8rem;" id="cardValidityDates">01-10-2026 to 31-10-2026</div>
+                <div style="color:var(--green);font-size:0.65rem;font-weight:700;">● AUTO-VERIFIED (OCR)</div>
+              </div>
+              <div class="pass-card-qr" id="cardQrCode"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:20px;flex-wrap:wrap;">
+          <button class="btn-primary" style="width:auto;padding:12px 24px;" onclick="window.print()">
+            <i class="fas fa-print"></i> <span>Print Pass Card</span>
+          </button>
+          <button class="btn-primary" style="width:auto;padding:12px 24px;background:var(--bg-surface);color:#fff;" onclick="PortalApp.downloadPassAsImage()">
+            <i class="fas fa-download"></i> <span>Download Pass Image</span>
+          </button>
+          <button class="btn-primary" style="width:auto;padding:12px 24px;background:var(--bg-input);color:var(--cyan);" onclick="PortalApp.resetWizard()">
+            <i class="fas fa-redo"></i> <span>Issue Another Pass</span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ========================================================
+         VIEW 2: CONDUCTOR / BUS QR CODE SCANNER
+         ======================================================== -->
+    <main id="viewConductor" style="display:none;">
+      <section class="portal-section glass-panel conductor-scanner-wrapper">
+        <h2 class="section-title" style="justify-content:center;"><i class="fas fa-qrcode" style="color:var(--cyan)"></i> Conductor Pass Verifier</h2>
+        <p class="section-desc">Verify pass validity on board the shuttle bus in real time.</p>
+
+        <!-- Pass Verification Input / Simulator -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label" for="conductorSerialInput">Enter Pass Serial # or Member Code</label>
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <input type="text" id="conductorSerialInput" class="form-input" placeholder="e.g. 01, 104, or CC-00001">
+            <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="PortalApp.verifyPassConductor()">
+              Verify
+            </button>
+          </div>
+        </div>
+
+        <!-- Conductor Result Card -->
+        <div id="conductorResultCard" style="display:none;padding:20px;border-radius:var(--radius-md);margin-top:20px;">
+          <div id="conductorStatusBadge" style="font-size:1.4rem;font-weight:900;margin-bottom:10px;"></div>
+          <div id="conductorDetailsBox" style="font-size:0.95rem;color:var(--text-secondary);"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ========================================================
+         VIEW 3: ADMIN & AUDIT DESK
+         ======================================================== -->
+    <main id="viewAdmin" style="display:none;">
+      
+      <!-- Admin PIN Protection Banner if not authenticated -->
+      <section class="portal-section glass-panel" id="adminAuthSection">
+        <h2 class="section-title"><i class="fas fa-lock" style="color:var(--amber)"></i> Manager Authentication</h2>
+        <p class="section-desc">Enter the Manager Desk PIN to review online transactions and system controls.</p>
+        <div style="max-width:340px;margin-top:14px;">
+          <input type="password" id="adminPinInput" class="form-input" placeholder="Enter PIN (Default: commander123)" style="margin-bottom:12px;">
+          <button class="btn-primary" onclick="PortalApp.authenticateAdmin()">Unlock Admin Desk</button>
+        </div>
+      </section>
+
+      <!-- Admin Dashboard Content -->
+      <div id="adminDashboardContent" style="display:none;">
+        
+        <!-- Summary Stats Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;">
+          <div class="glass-panel" style="padding:18px;">
+            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Total Online Revenue</span>
+            <div style="font-size:1.75rem;font-weight:900;color:var(--cyan);margin-top:4px;" id="adminStatRevenue">PKR 0</div>
+          </div>
+          <div class="glass-panel" style="padding:18px;">
+            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Verified Passes Issued</span>
+            <div style="font-size:1.75rem;font-weight:900;color:var(--green);margin-top:4px;" id="adminStatPasses">0</div>
+          </div>
+          <div class="glass-panel" style="padding:18px;">
+            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">AI OCR Auto-Accept Rate</span>
+            <div style="font-size:1.75rem;font-weight:900;color:var(--purple);margin-top:4px;">100%</div>
+          </div>
+          <div class="glass-panel" style="padding:18px;">
+            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Google Sheets Sync</span>
+            <div style="font-size:1rem;font-weight:800;color:var(--green);margin-top:8px;">
+              <i class="fas fa-check-circle"></i> Connected
+            </div>
+          </div>
+        </div>
+
+        <!-- Online Transactions Register -->
+        <section class="portal-section glass-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 class="section-title" style="margin-bottom:0;"><i class="fas fa-list-check" style="color:var(--cyan)"></i> Online Transactions Register</h2>
+            <button class="btn-demo" onclick="PortalApp.triggerGoogleSync()">
+              <i class="fab fa-google-drive" style="color:#34a853"></i> Sync Now to Google Sheets
+            </button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;" id="transactionsTable">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);text-align:left;color:var(--text-muted);">
+                  <th style="padding:10px 8px;">Date</th>
+                  <th style="padding:10px 8px;">Member Name</th>
+                  <th style="padding:10px 8px;">Pass Serial</th>
+                  <th style="padding:10px 8px;">Amount</th>
+                  <th style="padding:10px 8px;">Provider / TID</th>
+                  <th style="padding:10px 8px;">OCR Status</th>
+                  <th style="padding:10px 8px;text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transactionsTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/ocr-engine.js"></script>
+  <script src="js/portal.js"></script>
+</body>
+</html>

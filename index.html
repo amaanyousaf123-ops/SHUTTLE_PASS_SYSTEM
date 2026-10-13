@@ -13,8 +13,14 @@
     <link rel="stylesheet" href="css/styles.css">
     <!-- SheetJS for Excel (.xlsx / .csv) parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- QRCode library for Mobile App LAN pairing -->
+    <!-- QRCode library for dynamic pass card QR code generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Tesseract.js OCR Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- Shuttle Pass Advanced OCR Receipt Parser -->
+    <script src="js/ocr-engine.js"></script>
+    <!-- Integrated Portal Styles -->
+    <link rel="stylesheet" href="css/portal.css">
 </head>
 <body>
 
@@ -40,13 +46,14 @@
                 <i class="fas fa-sync-alt"></i><span>Bulk Renewal</span>
             </a>
             <a class="nav-item" data-view="history">
-                <i class="fas fa-history"></i><span>Renewal History</span>
+                <i class="fas fa-history"></i><span>Payment Logs & History</span>
+            </a>
+            <div class="nav-section">Online Portal & AI OCR</div>
+            <a class="nav-item" data-view="portal" style="background:rgba(6,182,212,0.12);color:var(--cyan-light);font-weight:700;border:1px solid rgba(6,182,212,0.3);">
+                <i class="fas fa-camera"></i><span>Online Payment Portal (OCR)</span>
             </a>
         </nav>
         <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:8px">
-            <button id="mobileQrBtn" class="btn-seed" style="background:rgba(168,85,247,0.15);color:#c084fc;border-color:rgba(168,85,247,0.3);font-weight:700">
-                <i class="fas fa-qrcode"></i><span>Manager Mobile App QR</span>
-            </button>
             <button id="exportCardsBtn" class="btn-seed" style="background:rgba(16,185,129,0.15);color:var(--green);border-color:rgba(16,185,129,0.3)">
                 <i class="fas fa-sync-alt"></i><span>Force Sync Data to Folder</span>
             </button>
@@ -65,8 +72,11 @@
                 <h2 class="page-title" id="pageTitle">Monthly Passes</h2>
             </div>
             <div class="topbar-right">
-                <button id="topbarQrBtn" class="btn btn-sm" style="background:rgba(168,85,247,0.2);color:#c084fc;border:1px solid rgba(168,85,247,0.4);font-weight:700;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px">
-                    <i class="fas fa-qrcode"></i><span>Manager Mobile App</span>
+                <button id="topbarPortalBtn" class="btn btn-sm" style="background:linear-gradient(135deg,rgba(6,182,212,0.25),rgba(139,92,246,0.25));color:var(--cyan-light);border:1px solid rgba(6,182,212,0.5);font-weight:700;display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px">
+                    <i class="fas fa-camera"></i><span>Online Payment Portal</span>
+                </button>
+                <button id="topbarPaymentsBtn" class="btn btn-sm" style="background:rgba(245,158,11,0.18);color:var(--amber);border:1px solid rgba(245,158,11,0.4);font-weight:700;display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px">
+                    <i class="fas fa-money-bill-wave"></i><span>Payment Logs & Print</span>
                 </button>
                 <div class="topbar-date" id="topbarDate"></div>
                 <div class="sync-badge" id="syncBadge" title="Data sync status">

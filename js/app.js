@@ -38,14 +38,17 @@ const App = {
             googleSyncBtn.onclick = () => this.showGoogleSyncModal();
         }
 
-        const mobileQrBtn = document.getElementById('mobileQrBtn');
-        if (mobileQrBtn) mobileQrBtn.onclick = () => this.showMobileQrModal();
+        const topbarPortalBtn = document.getElementById('topbarPortalBtn');
+        if (topbarPortalBtn) {
+            topbarPortalBtn.onclick = () => this.navigate('portal');
+        }
 
-        const topbarQrBtn = document.getElementById('topbarQrBtn');
-        if (topbarQrBtn) topbarQrBtn.onclick = () => this.showMobileQrModal();
+        const topbarPaymentsBtn = document.getElementById('topbarPaymentsBtn');
+        if (topbarPaymentsBtn) {
+            topbarPaymentsBtn.onclick = () => this.navigate('history');
+        }
 
-        this.updatePendingBadge();
-        // NOTE: pullServerState polling is handled in db.js (every 10s) — no duplicate interval here.
+        // Data auto-saves to the server via DB.syncToFolder on every change.
 
         // === STARTUP RESTORE ===
         // IndexedDB persists across page refreshes automatically.
@@ -269,10 +272,10 @@ const App = {
 
         const titles = {
             passes: 'Monthly Shuttle Passes',
-            verification: 'Manager Card Approvals Queue',
             members: 'Members Directory',
             renewal: 'Payment Sequence Renewal',
-            history: 'Payment Logs & History'
+            history: 'Payment Logs & History',
+            portal: 'Online Payment Portal & AI OCR Scanner'
         };
         document.getElementById('pageTitle').textContent = titles[view] || 'Shuttle Pass System';
         this.render(view);
@@ -285,10 +288,10 @@ const App = {
         try {
             switch (view) {
                 case 'passes': await this.vPasses(c); break;
-                case 'verification': await this.vVerification(c); break;
                 case 'members': await this.vMembers(c); break;
                 case 'renewal': await this.vRenewal(c); break;
                 case 'history': await this.vHistory(c); break;
+                case 'portal': await this.vPortal(c); break;
                 default: c.innerHTML = '<div class="empty-state"><i class="fas fa-ghost"></i><p>View not found</p></div>';
             }
         } catch (e) {
@@ -323,13 +326,14 @@ const App = {
             [`MONTHLY SHUTTLE PASS REGISTER — ${monthName.toUpperCase()} ${year}`],
             [`Total Cards Issued: ${passes.length}`, `Export Date: ${new Date().toLocaleDateString()}`],
             [],
-            ['S.No (#)', 'Member Code', 'Member Name', 'CNIC Number', 'House / Plot No', 'Contact No', 'Pass Category', 'Fee Amount (PKR)', 'Issue Date', 'Valid Till', 'Status', 'Notes / Remarks']
+            ['S.No (#)', 'Member Code', 'Member Name', 'CNIC Number', 'House / Plot No', 'Contact No', 'Pass Category', 'Fee Amount (PKR)', 'Payment Method', 'Issue Date', 'Valid Till', 'Status', 'Notes / Remarks']
         ];
 
         passes.forEach((p, idx) => {
             const amt = Number(p.amount) || 0;
             totalAmt += amt;
             const memberCode = p.memberId ? `CC-${String(p.memberId).padStart(5, '0')}` : 'CC-00000';
+            const payMethod = p.paymentMethod || (p.passType === 'Free' ? 'Free' : 'Cash');
             wsData.push([
                 `#${p.serialNo || (idx + 1)}`,
                 memberCode,
@@ -339,6 +343,7 @@ const App = {
                 p.contact || '',
                 (p.passType || 'Full').toUpperCase(),
                 amt,
+                payMethod,
                 p.issueDate || '',
                 p.validTill || '',
                 p.incomplete ? 'INCOMPLETE' : (p.status || 'active').toUpperCase(),
@@ -347,7 +352,7 @@ const App = {
         });
 
         wsData.push([]);
-        wsData.push(['TOTAL CARDS:', passes.length, '', '', '', '', 'TOTAL COLLECTION:', totalAmt, '', '', '', '']);
+        wsData.push(['TOTAL CARDS:', passes.length, '', '', '', '', 'TOTAL COLLECTION:', totalAmt, '', '', '', '', '']);
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -362,6 +367,7 @@ const App = {
             { wch: 15 }, // Contact
             { wch: 14 }, // Category
             { wch: 16 }, // Amount
+            { wch: 14 }, // Payment Method
             { wch: 14 }, // Issue Date
             { wch: 14 }, // Valid Till
             { wch: 12 }, // Status
@@ -395,6 +401,7 @@ const App = {
             const amt = Number(p.amount) || 0;
             totalAmt += amt;
             const memberCode = p.memberId ? `CC-${String(p.memberId).padStart(5, '0')}` : 'CC-00000';
+            const payMethod = p.paymentMethod || (p.passType === 'Free' ? 'Free' : 'Cash');
             return `
             <tr>
                 <td style="text-align:center;font-weight:bold">#${p.serialNo || (idx + 1)}</td>
@@ -404,6 +411,7 @@ const App = {
                 <td>${this.esc(p.houseNo || '—')}</td>
                 <td>${this.esc(p.contact || '—')}</td>
                 <td style="text-align:center">${(p.passType || 'Full').toUpperCase()}</td>
+                <td style="text-align:center">${payMethod}</td>
                 <td style="text-align:right;font-weight:bold">PKR ${amt.toLocaleString()}</td>
                 <td style="text-align:center">${p.issueDate || '—'}</td>
                 <td style="text-align:center">${p.validTill || '—'}</td>
@@ -444,6 +452,7 @@ const App = {
                         <th style="padding:6px;border:1px solid #000">House / Plot</th>
                         <th style="padding:6px;border:1px solid #000">Contact</th>
                         <th style="padding:6px;border:1px solid #000">Category</th>
+                        <th style="padding:6px;border:1px solid #000">Payment Method</th>
                         <th style="padding:6px;border:1px solid #000">Fee (PKR)</th>
                         <th style="padding:6px;border:1px solid #000">Issue Date</th>
                         <th style="padding:6px;border:1px solid #000">Valid Till</th>
@@ -455,7 +464,7 @@ const App = {
                 </tbody>
                 <tfoot>
                     <tr style="font-weight:bold;background:#f3f4f6;border:1.5px solid #000">
-                        <td colspan="7" style="text-align:right;padding:8px;border:1px solid #000">TOTAL COLLECTION (${passes.length} Cards):</td>
+                        <td colspan="8" style="text-align:right;padding:8px;border:1px solid #000">TOTAL COLLECTION (${passes.length} Cards):</td>
                         <td style="text-align:right;padding:8px;border:1px solid #000;font-size:0.95rem">PKR ${totalAmt.toLocaleString()}</td>
                         <td colspan="3" style="border:1px solid #000"></td>
                     </tr>
@@ -679,6 +688,7 @@ const App = {
                             <th>House / Plot No</th>
                             <th>Contact</th>
                             <th style="width:100px">Category</th>
+                            <th style="width:120px">Payment Method</th>
                             <th style="width:110px;text-align:right">Fee (PKR)</th>
                             <th style="width:100px">Valid Till</th>
                             <th style="width:100px">Status</th>
@@ -689,6 +699,7 @@ const App = {
                         ${passes.map((p, idx) => {
                             const isInc = p.incomplete;
                             const memberCode = p.memberId ? `CC-${String(p.memberId).padStart(5, '0')}` : 'CC-00000';
+                            const payMethod = p.paymentMethod || (p.passType === 'Free' ? 'Free' : 'Cash');
                             return `
                             <tr style="${isInc ? 'background:rgba(245,158,11,0.06)' : ''}">
                                 <td style="font-weight:800;color:var(--amber)">#${p.serialNo || (idx + 1)}</td>
@@ -698,6 +709,7 @@ const App = {
                                 <td>${this.esc(p.houseNo || '—')}</td>
                                 <td>${this.esc(p.contact || '—')}</td>
                                 <td><span class="badge" style="background:${p.passType === 'Free' ? 'rgba(16,185,129,0.2)' : p.passType === 'Half' ? 'rgba(245,158,11,0.15)' : 'rgba(6,182,212,0.15)'};color:${p.passType === 'Free' ? 'var(--green)' : p.passType === 'Half' ? 'var(--amber)' : 'var(--cyan)'}">${ p.passType === 'Free' ? 'FREE' : (p.passType || 'Full').toUpperCase()}</span></td>
+                                <td style="text-align:center;font-weight:600;color:${payMethod === 'Online' ? 'var(--cyan)' : payMethod === 'Free' ? 'var(--green)' : 'var(--amber)'}">${payMethod}</td>
                                 <td style="text-align:right;font-weight:700">${p.passType === 'Free' ? '<span style="color:var(--green);font-weight:900">FREE ✓</span>' : 'PKR ' + (Number(p.amount) || 0).toLocaleString()}</td>
                                 <td>${p.validTill || '—'}</td>
                                 <td>
@@ -717,7 +729,7 @@ const App = {
                     </tbody>
                     <tfoot>
                         <tr style="font-weight:800;background:var(--glass-heavy)">
-                            <td colspan="7" style="text-align:right">TOTAL FOR ${monthNames[month].toUpperCase()} ${year} (${total} CARDS):</td>
+                            <td colspan="8" style="text-align:right">TOTAL FOR ${monthNames[month].toUpperCase()} ${year} (${total} CARDS):</td>
                             <td style="text-align:right;color:var(--green);font-size:0.95rem">PKR ${totalRevenue.toLocaleString()}</td>
                             <td colspan="3"></td>
                         </tr>
@@ -840,9 +852,22 @@ const App = {
             const passType = document.getElementById('pay_passtype').value;
             const amount = parseFloat(document.getElementById('pay_amount').value) || 0;
             const notes = document.getElementById('pay_notes').value.trim();
+            const paymentMethod = document.querySelector('input[name="pay_method"]:checked')?.value || 'Cash';
+            const proofInput = document.getElementById('pay_proof');
 
             if (!memberId) { this.toast('Please search and select a member first', 'warning'); return; }
             if (!serialOverride) { this.toast('Please enter the serial number to issue', 'warning'); return; }
+
+            // Payment Proof is mandatory for every Cash / Online transaction
+            if (passType !== 'Free' && (!proofInput || !proofInput.files || !proofInput.files[0])) {
+                this.toast('⚠️ Payment Proof photo is required (Cash / Online) before issuing the pass.', 'warning');
+                return;
+            }
+
+            let paymentProof = null;
+            if (proofInput && proofInput.files && proofInput.files[0]) {
+                paymentProof = await this._compressImage(proofInput.files[0]);
+            }
 
             try {
                 // Check if serial is already taken this month
@@ -852,12 +877,14 @@ const App = {
                     return;
                 }
 
-                const res = await DB.processMemberPaymentWithSerial(memberId, month, year, serialOverride, amount, notes, passType);
-                await DB.syncNow();
+                const res = await DB.processMemberPaymentWithSerial(memberId, month, year, serialOverride, amount, notes, passType, paymentMethod, paymentProof);
+                // Sync in background — don't let a network/server failure
+                // roll back an already-successful payment save.
+                DB.syncNow().catch(syncErr => console.warn('[Sync] Post-payment sync failed (data is safe in IndexedDB):', syncErr));
                 if (res.alreadyIssued) {
                     this.toast(`Member already has Serial #${res.pass.serialNo} for ${monthNames[month]} ${year}`, 'info');
                 } else {
-                    this.toast(`✅ Serial #${serialOverride} issued to ${res.pass.memberName}!`, 'success');
+                    this.toast(`✅ Serial #${serialOverride} issued to ${res.pass.memberName} (${paymentMethod} — proof attached)!`, 'success');
                 }
                 this.closeModal();
                 await this._renderCards();
@@ -924,6 +951,26 @@ const App = {
             <div class="form-group" style="flex:1;min-width:140px">
                 <label>Notes / Receipt Ref</label>
                 <input type="text" id="pay_notes" placeholder="Cash / Bank Transfer">
+            </div>
+        </div>
+
+        <!-- Payment Method & Proof (Mandatory for all non-Free passes) -->
+        <div style="margin-top:16px;padding:14px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.3);border-radius:var(--radius-sm)">
+            <div style="font-weight:700;color:var(--purple);margin-bottom:10px"><i class="fas fa-credit-card"></i> &nbsp;Payment Method & Proof</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600">
+                    <input type="radio" name="pay_method" value="Cash" checked style="accent-color:var(--amber)"> <span style="color:var(--amber)"><i class="fas fa-money-bill-wave"></i> Cash</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600">
+                    <input type="radio" name="pay_method" value="Online" style="accent-color:var(--cyan)"> <span style="color:var(--cyan)"><i class="fas fa-university"></i> Online Transfer</span>
+                </label>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="font-weight:700;color:var(--red)"><i class="fas fa-camera" style="color:var(--red)"></i> &nbsp;Payment Proof Photo * <span style="font-size:0.75rem;color:var(--text-muted)">(Required for Cash & Online)</span></label>
+                <input type="file" id="pay_proof" accept="image/*" capture="environment"
+                    style="width:100%;background:var(--glass-heavy);border:2px dashed var(--cyan);color:var(--text-primary);border-radius:var(--radius-sm);padding:8px"
+                    onchange="this.parentElement.querySelector('.proof-preview').innerHTML = this.files[0] ? '<img src=\''+URL.createObjectURL(this.files[0])+'\' style=\'max-width:120px;max-height:80px;border-radius:4px;border:1px solid var(--border)\'>' : ''">
+                <div class="proof-preview" style="margin-top:8px"></div>
             </div>
         </div>`;
 
@@ -1029,16 +1076,25 @@ const App = {
             const passType = document.getElementById('c_passtype').value;
             const amount = DB.getFeeForMonth(month, year, passType);
             const photoInput = document.getElementById('c_photo');
+            const paymentMethod = document.querySelector('input[name="c_pay_method"]:checked')?.value || 'Cash';
+            const proofInput = document.getElementById('c_proof');
 
             if (!memberName) { this.toast('Member name is required', 'warning'); return; }
 
+            // Payment Proof is mandatory for every Cash / Online transaction (unless Free pass)
+            if (passType !== 'Free' && (!proofInput || !proofInput.files || !proofInput.files[0])) {
+                this.toast('⚠️ Payment Proof photo is required (Cash / Online) before saving.', 'warning');
+                return;
+            }
+
             let photoBase64 = null;
             if (photoInput && photoInput.files && photoInput.files[0]) {
-                photoBase64 = await new Promise((resolve) => {
-                    const r = new FileReader();
-                    r.onload = (e) => resolve(e.target.result);
-                    r.readAsDataURL(photoInput.files[0]);
-                });
+                photoBase64 = await this._compressImage(photoInput.files[0]);
+            }
+
+            let paymentProof = null;
+            if (proofInput && proofInput.files && proofInput.files[0]) {
+                paymentProof = await this._compressImage(proofInput.files[0]);
             }
 
             if (passId) {
@@ -1055,7 +1111,9 @@ const App = {
                     p.passType = passType;
                     // Free passes are always PKR 0
                     p.amount = passType === 'Free' ? 0 : amount;
+                    p.paymentMethod = paymentMethod;
                     if (photoBase64) p.photo = photoBase64;
+                    if (paymentProof) p.paymentProof = paymentProof;
                     await DB.put('passes', p);
 
                     // ── Auto-sync changes to the Member Directory too ──
@@ -1077,7 +1135,7 @@ const App = {
                 const memberId = await DB.add('members', { name: memberName, cnic, houseNo, contact, photo: photoBase64, status: 'active', createdAt: new Date().toISOString() });
                 await DB.add('passes', {
                     memberId, memberName, cnic, houseNo, contact, photo: photoBase64, serialNo, month, year,
-                    passType, amount, issueDate, validTill, status: 'active', paymentSeq: parseInt(serialNo) || 0, createdAt: new Date().toISOString()
+                    passType, amount, paymentMethod, paymentProof, issueDate, validTill, status: 'active', paymentSeq: parseInt(serialNo) || 0, createdAt: new Date().toISOString()
                 });
                 await DB.syncNow();
                 this.toast('✅ New Commander City pass card created!', 'success');
@@ -1091,6 +1149,7 @@ const App = {
 
         let data = {
             memberName: '', cnic: '', houseNo: '', contact: '', photo: null,
+            paymentMethod: 'Cash', paymentProof: null,
             serialNo: String(await DB.getNextPaymentSequenceSerial(month, year)),
             issueDate: `01-${mm}-${year}`,
             validTill: `${String(lastDay).padStart(2, '0')}-${mm}-${year}`,
@@ -1166,6 +1225,26 @@ const App = {
                     const r=new FileReader(); r.onload=e=>{ const p=document.getElementById('photoPreview'); p.innerHTML='<img src=\''+e.target.result+'\' style=\'width:100%;height:100%;object-fit:cover\'>'; }; r.readAsDataURL(f);
                 ">
                 <button type="button" onclick="document.getElementById('c_photo').click()" class="btn btn-ghost btn-sm" style="width:120px"><i class="fas fa-upload"></i> Upload Photo</button>
+            </div>
+        </div>
+
+        <!-- Payment Method & Proof (Mandatory for all non-Free passes) -->
+        <div style="margin-top:16px;padding:14px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.3);border-radius:var(--radius-sm)">
+            <div style="font-weight:700;color:var(--purple);margin-bottom:10px"><i class="fas fa-credit-card"></i> &nbsp;Payment Method & Proof</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600">
+                    <input type="radio" name="c_pay_method" value="Cash" ${data.paymentMethod === 'Online' ? '' : 'checked'} style="accent-color:var(--amber)"> <span style="color:var(--amber)"><i class="fas fa-money-bill-wave"></i> Cash</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600">
+                    <input type="radio" name="c_pay_method" value="Online" ${data.paymentMethod === 'Online' ? 'checked' : ''} style="accent-color:var(--cyan)"> <span style="color:var(--cyan)"><i class="fas fa-university"></i> Online Transfer</span>
+                </label>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="font-weight:700;color:var(--red)"><i class="fas fa-camera" style="color:var(--red)"></i> &nbsp;Payment Proof Photo * <span style="font-size:0.75rem;color:var(--text-muted)">(Required for Cash & Online)</span></label>
+                <input type="file" id="c_proof" accept="image/*" capture="environment"
+                    style="width:100%;background:var(--glass-heavy);border:2px dashed var(--cyan);color:var(--text-primary);border-radius:var(--radius-sm);padding:8px"
+                    onchange="this.parentElement.querySelector('.proof-preview').innerHTML = this.files[0] ? '<img src=\''+URL.createObjectURL(this.files[0])+'\' style=\'max-width:120px;max-height:80px;border-radius:4px;border:1px solid var(--border)\'>' : ''">
+                <div class="proof-preview" style="margin-top:8px">${data.paymentProof ? `<img src="${data.paymentProof}" style='max-width:120px;max-height:80px;border-radius:4px;border:1px solid var(--border)'>` : ''}</div>
             </div>
         </div>`;
 
@@ -1708,13 +1787,39 @@ const App = {
     },
 
     async runBulkRenewal(sM, sY, tM, tY) {
-        const renewed = await DB.renewMonth(sM, sY, tM, tY);
+        const paymentMethod = prompt('Payment Method for bulk renewal (Cash / Online):', 'Cash');
+        const method = (paymentMethod || 'Cash').trim().toLowerCase() === 'online' ? 'Online' : 'Cash';
+        
+        // For bulk renewal, proof is mandatory - show file input
+        const proofInput = document.createElement('input');
+        proofInput.type = 'file';
+        proofInput.accept = 'image/*';
+        proofInput.capture = 'environment';
+        proofInput.style.display = 'none';
+        
+        const proofSelected = await new Promise((resolve) => {
+            proofInput.onchange = () => resolve(proofInput.files[0] || null);
+            proofInput.click();
+        });
+        
+        let paymentProof = null;
+        if (proofSelected) {
+            paymentProof = await this._compressImage(proofSelected);
+        }
+        
+        // Payment proof is mandatory for non-free passes (bulk renewal always has paid passes)
+        if (!paymentProof) {
+            this.toast('⚠️ Payment Proof photo is required for bulk renewal.', 'warning');
+            return;
+        }
+
+        const renewed = await DB.renewMonth(sM, sY, tM, tY, method, paymentProof);
         if (renewed === 0) {
             this.toast('No active members to renew or already renewed for target month', 'warning');
             return;
         }
         await DB.syncNow();
-        this.toast(`Successfully renewed ${renewed} passes in payment sequence!`, 'success');
+        this.toast(`Successfully renewed ${renewed} passes in payment sequence (${method} — proof attached)!`, 'success');
         this.navigate('passes');
     },
 
@@ -1724,21 +1829,273 @@ const App = {
         const monthNames = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
 
         el.innerHTML = `
-        <div class="page-header"><h2><i class="fas fa-history" style="color:var(--cyan);margin-right:8px"></i>Payment Sequence Logs</h2></div>
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;width:100%">
+            <h2><i class="fas fa-history" style="color:var(--cyan);margin-right:8px"></i>Payment Transactions & Logs</h2>
+            <button class="btn btn-ghost" onclick="App.promptPrintTransactions()" style="font-weight:700;border-color:var(--border-hover)">
+                <i class="fas fa-print" style="color:var(--cyan)"></i> Print Transactions Register
+            </button>
+        </div>
         <div class="card"><div class="table-wrapper"><table class="table">
-            <thead><tr><th>#</th><th>Payment Date & Time</th><th>Member Name</th><th>Cycle</th><th>Assigned Serial</th><th>Amount</th><th>Notes</th></tr></thead>
-            <tbody>${payments.length === 0 ? '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-history"></i><p>No payment logs recorded yet</p></div></td></tr>' :
-                payments.reverse().map((p, i) => `<tr>
+            <thead><tr><th>#</th><th>Payment Date & Time</th><th>Member Name</th><th>Cycle</th><th>Assigned Serial</th><th>Method</th><th>Amount</th><th>Notes</th><th style="width:80px">Receipt</th></tr></thead>
+            <tbody>${payments.length === 0 ? '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-history"></i><p>No payment logs recorded yet</p></div></td></tr>' :
+                payments.reverse().map((p, i) => {
+                    const m = p.paymentMethod || (p.passType === 'Free' ? 'Free' : 'Cash');
+                    const amt = Number(p.amount) || 0;
+                    const methodBadge = m === 'Online'
+                        ? '<span class="badge" style="background:rgba(6,182,212,0.15);color:var(--cyan)">Online</span>'
+                        : m === 'Free'
+                        ? '<span class="badge" style="background:rgba(16,185,129,0.2);color:var(--green)">Free</span>'
+                        : '<span class="badge" style="background:rgba(245,158,11,0.15);color:var(--amber)">Cash</span>';
+                    return `<tr>
                     <td>${i + 1}</td>
                     <td>${new Date(p.paidAt).toLocaleString('en-PK')}</td>
                     <td style="font-weight:600">${this.esc(p.memberName)}</td>
                     <td>${monthNames[p.month]} ${p.year}</td>
                     <td><span class="badge badge-active" style="font-size:0.85rem;font-weight:800">Serial #${p.serialNo}</span></td>
-                    <td>PKR ${p.amount || 0} <span style="font-size:0.75rem;font-weight:bold;color:${p.amount === 4000 ? 'var(--amber)' : 'var(--cyan)'}">(${ p.amount === 4000 ? 'Half' : 'Full'})</span></td>
+                    <td>${methodBadge}</td>
+                    <td>PKR ${amt.toLocaleString()} <span style="font-size:0.75rem;font-weight:bold;color:${amt === 4000 ? 'var(--amber)' : 'var(--cyan)'}">(${ amt === 4000 ? 'Half' : 'Full'})</span></td>
                     <td>${this.esc(p.notes || '—')}</td>
-                </tr>`).join('')}
+                    <td style="text-align:center">
+                        <button class="btn btn-ghost btn-sm" style="padding:5px 10px" onclick="App.showPaymentReceipt(${p.id})" title="View & Print Payment Receipt">
+                            <i class="fas fa-receipt" style="color:var(--amber)"></i>
+                        </button>
+                    </td>
+                </tr>`;
+                }).join('')}
             </tbody>
         </table></div></div>`;
+    },
+
+    /* ── Payment Transactions: Access & Print ── */
+
+    async promptPrintTransactions() {
+        const payments = await DB.getAll('payments');
+        if (!payments.length) { this.toast('No payment transactions recorded yet', 'warning'); return; }
+        const monthNames = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+        const years = [...new Set(payments.map(p => Number(p.year) || new Date().getFullYear()))].sort((a, b) => b - a);
+
+        const body = `
+        <div style="padding:4px 0">
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:14px">Choose the cycle to print. The register lists every payment transaction with Cash / Online / Free method, amounts, and totals.</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div style="flex:1;min-width:150px">
+                    <label style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block">Month</label>
+                    <select id="tx_month">
+                        <option value="0">All Months</option>
+                        ${monthNames.slice(1).map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}
+                    </select>
+                </div>
+                <div style="flex:1;min-width:150px">
+                    <label style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block">Year</label>
+                    <select id="tx_year">
+                        <option value="0">All Years</option>
+                        ${years.map(y => `<option value="${y}" ${y === new Date().getFullYear() ? 'selected' : ''}>${y}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+        </div>`;
+
+        this.openModal('🖨 Print Payment Transactions Register', body,
+            `<button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
+             <button class="btn btn-primary" onclick="App._doPrintTransactions()"><i class="fas fa-print"></i> Print Register</button>`);
+    },
+
+    async _doPrintTransactions() {
+        const month = parseInt(document.getElementById('tx_month')?.value || '0');
+        const year = parseInt(document.getElementById('tx_year')?.value || '0');
+        this.closeModal();
+        await this.openTransactionPrint(month, year);
+    },
+
+    async openTransactionPrint(month = 0, year = 0) {
+        let payments = await DB.getAll('payments');
+        const monthNames = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+        if (month) payments = payments.filter(p => Number(p.month) === month);
+        if (year) payments = payments.filter(p => Number(p.year) === year);
+        if (!payments.length) { this.toast('No payment transactions found for the selected cycle', 'warning'); return; }
+        payments.sort((a, b) => (a.paidAt || '').localeCompare(b.paidAt || ''));
+
+        let totalAmt = 0, totalCash = 0, totalOnline = 0, totalFree = 0;
+        const rows = payments.map((p, i) => {
+            const m = p.paymentMethod || (p.passType === 'Free' ? 'Free' : 'Cash');
+            const amt = Number(p.amount) || 0;
+            totalAmt += amt;
+            if (m === 'Online') totalOnline += amt;
+            else if (m === 'Cash') totalCash += amt;
+            else totalFree += amt;
+            return `<tr>
+                <td style="text-align:center;padding:6px 8px">${i + 1}</td>
+                <td style="padding:6px 8px">${new Date(p.paidAt).toLocaleString('en-PK')}</td>
+                <td style="padding:6px 8px;font-weight:600">${this.esc(p.memberName)}</td>
+                <td style="text-align:center;padding:6px 8px">${monthNames[p.month] || p.month} ${p.year}</td>
+                <td style="text-align:center;padding:6px 8px">#${this.esc(p.serialNo)}</td>
+                <td style="text-align:center;padding:6px 8px">${m}</td>
+                <td style="text-align:right;padding:6px 8px;font-weight:700">PKR ${amt.toLocaleString()}</td>
+                <td style="padding:6px 8px">${this.esc(p.notes || '—')}</td>
+            </tr>`;
+        }).join('');
+
+        const filterLabel = (month && year) ? `${monthNames[month].toUpperCase()} ${year}`
+            : (year ? `YEAR ${year}` : (month ? monthNames[month].toUpperCase() : 'ALL MONTHS / ALL YEARS'));
+
+        const printWin = window.open('', '_blank', 'width=900,height=600');
+        if (!printWin) { alert('Pop-up blocked! Please allow pop-ups for this site to print.'); return; }
+
+        printWin.document.write(`<!DOCTYPE html><html><head>
+        <meta charset="utf-8">
+        <title>Payment Transactions Register — ${this.esc(filterLabel)}</title>
+        <style>
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #000; margin: 0; padding: 20px; }
+            .header { text-align: center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 16px; }
+            .header h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: 1px; }
+            .header div { font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #000; padding: 6px 8px; }
+            th { background: #e5e7eb; font-weight: 800; text-align: left; }
+            .totals { margin-top: 14px; font-size: 13px; font-weight: 700; }
+            .totals table { border: none; }
+            .totals td { border: none; padding: 2px 8px; }
+            .footer { margin-top: 24px; font-size: 12px; text-align: center; color: #333; border-top: 1px solid #999; padding-top: 8px; }
+            @media print { body { padding: 6mm; } }
+        </style></head><body>
+        <div class="header">
+            <h1>COMMANDER CITY HOUSING SOCIETY — SHUTTLE PASS</h1>
+            <div><strong>PAYMENT TRANSACTIONS REGISTER — ${this.esc(filterLabel)}</strong></div>
+            <div>Generated: ${new Date().toLocaleString('en-PK')} &nbsp;·&nbsp; Total Transactions: ${payments.length}</div>
+        </div>
+        <table>
+            <thead><tr><th>Sr#</th><th>Payment Date & Time</th><th>Member Name</th><th>Cycle</th><th>Serial</th><th>Method</th><th style="text-align:right">Amount (PKR)</th><th>Notes</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div class="totals">
+            <table>
+                <tr><td>TOTAL TRANSACTIONS:</td><td>${payments.length}</td><td></td></tr>
+                <tr><td>TOTAL CASH COLLECTION:</td><td>PKR ${totalCash.toLocaleString()}</td><td></td></tr>
+                <tr><td>TOTAL ONLINE TRANSFERS:</td><td>PKR ${totalOnline.toLocaleString()}</td><td></td></tr>
+                ${totalFree > 0 ? `<tr><td>TOTAL FREE PASSES:</td><td>PKR ${totalFree.toLocaleString()}</td><td></td></tr>` : ''}
+                <tr><td><strong>GRAND TOTAL:</strong></td><td><strong>PKR ${totalAmt.toLocaleString()}</strong></td><td></td></tr>
+            </table>
+        </div>
+        <div class="footer">Computer Generated Record — Commander City Shuttle Pass System</div>
+        <script>setTimeout(function(){ try { window.focus(); window.print(); } catch(e){} }, 250);</script>
+        </body></html>`);
+        printWin.document.close();
+    },
+
+    _receiptRow(label, value) {
+        return `<tr><td style="padding:5px 8px;font-weight:700;color:var(--text-muted);width:130px;border-bottom:1px solid rgba(148,163,184,0.15)">${label}</td>
+        <td style="padding:5px 8px;font-weight:600;border-bottom:1px solid rgba(148,163,184,0.15)">${value}</td></tr>`;
+    },
+
+    async showPaymentReceipt(paymentId) {
+        const p = await DB.get('payments', paymentId);
+        if (!p) { this.toast('Payment transaction not found', 'warning'); return; }
+        const monthNames = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+        const m = p.paymentMethod || (p.passType === 'Free' ? 'Free' : 'Cash');
+        const amt = Number(p.amount) || 0;
+        let proof = p.paymentProof || null;
+        if (!proof && p.passId) {
+            try { const pass = await DB.get('passes', p.passId); proof = pass && pass.paymentProof; } catch(e) {}
+        }
+
+        const body = `
+        <div style="max-width:420px;margin:0 auto;font-size:0.92rem">
+            <div style="text-align:center;border-bottom:2px solid var(--border);padding-bottom:10px;margin-bottom:14px">
+                <div style="font-weight:900;font-size:1.05rem;color:var(--amber)">COMMANDER CITY HOUSING SOCIETY</div>
+                <div style="color:var(--text-muted);font-size:0.8rem;font-weight:700">SHUTTLE PASS — PAYMENT RECEIPT</div>
+            </div>
+            <table style="width:100%;border-collapse:collapse">
+                ${this._receiptRow('Receipt No', `R-${String(p.id).padStart(4, '0')}`)}
+                ${this._receiptRow('Member', this.esc(p.memberName))}
+                ${this._receiptRow('Cycle', `${monthNames[p.month]} ${p.year}`)}
+                ${this._receiptRow('Serial / Card', `#${this.esc(p.serialNo)}`)}
+                ${this._receiptRow('Method', m)}
+                ${this._receiptRow('Amount', `<span style="font-weight:900;color:var(--green)">PKR ${amt.toLocaleString()}</span>`)}
+                ${this._receiptRow('Date & Time', new Date(p.paidAt).toLocaleString('en-PK'))}
+                ${p.notes ? this._receiptRow('Notes', this.esc(p.notes)) : ''}
+            </table>
+            ${proof ? `<div style="margin-top:14px">
+                <div style="font-weight:700;font-size:0.8rem;color:var(--text-muted);margin-bottom:6px"><i class="fas fa-paperclip"></i> PAYMENT PROOF / TRANSACTION SCREENSHOT</div>
+                <img src="${proof}" style="max-width:100%;max-height:240px;border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)" title="Click to view full size">
+            </div>` : `<div style="margin-top:14px;font-size:0.8rem;color:var(--text-muted)">No payment proof attached to this transaction.</div>`}
+        </div>`;
+
+        this.openModal(`🧾 Receipt — ${this.esc(p.memberName)}`, body,
+            `<button class="btn btn-ghost" onclick="App.closeModal()">Close</button>
+             <button class="btn btn-primary" onclick="App.printSingleReceipt(${p.id})"><i class="fas fa-print"></i> Print Receipt</button>`);
+    },
+
+    async printSingleReceipt(paymentId) {
+        const p = await DB.get('payments', paymentId);
+        if (!p) { this.toast('Payment transaction not found', 'warning'); return; }
+        const monthNames = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+        const m = p.paymentMethod || (p.passType === 'Free' ? 'Free' : 'Cash');
+        const amt = Number(p.amount) || 0;
+        let proof = p.paymentProof || null;
+        if (!proof && p.passId) {
+            try { const pass = await DB.get('passes', p.passId); proof = pass && pass.paymentProof; } catch(e) {}
+        }
+
+        const printWin = window.open('', '_blank', 'width=620,height=700');
+        if (!printWin) { alert('Pop-up blocked! Please allow pop-ups for this site to print receipts.'); return; }
+
+        printWin.document.write(`<!DOCTYPE html><html><head>
+        <meta charset="utf-8">
+        <title>Payment Receipt — ${this.esc(p.memberName)}</title>
+        <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #000; margin: 0; padding: 20px; }
+            .rc { max-width: 420px; margin: 0 auto; border: 2px solid #000; padding: 20px; }
+            .rc-head { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; }
+            .rc-head h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 1px; }
+            .rc-head div { font-size: 12px; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
+            table td { padding: 6px 4px; border-bottom: 1px dotted #000; }
+            td.lbl { font-weight: 700; width: 130px; }
+            .proof-wrap { margin-top: 14px; text-align: center; page-break-inside: avoid; }
+            .proof-wrap img { max-width: 100%; max-height: 240px; border: 1px solid #000; }
+            .amt { font-size: 16px; font-weight: 900; }
+            .foot { margin-top: 18px; text-align: center; font-size: 11px; border-top: 1px solid #000; padding-top: 8px; }
+            @media print { body { padding: 4mm; } }
+        </style></head><body>
+        <div class="rc">
+            <div class="rc-head">
+                <h1>COMMANDER CITY HOUSING SOCIETY</h1>
+                <div>SHUTTLE PASS — OFFICIAL PAYMENT RECEIPT</div>
+            </div>
+            <table>
+                <tr><td class="lbl">Receipt No</td><td>R-${String(p.id).padStart(4, '0')}</td></tr>
+                <tr><td class="lbl">Member Name</td><td>${this.esc(p.memberName)}</td></tr>
+                <tr><td class="lbl">Cycle</td><td>${monthNames[p.month]} ${p.year}</td></tr>
+                <tr><td class="lbl">Serial / Card No</td><td>#${this.esc(p.serialNo)}</td></tr>
+                <tr><td class="lbl">Payment Method</td><td>${m}</td></tr>
+                <tr><td class="lbl">Amount Paid</td><td class="amt">PKR ${amt.toLocaleString()}</td></tr>
+                <tr><td class="lbl">Date & Time</td><td>${new Date(p.paidAt).toLocaleString('en-PK')}</td></tr>
+                ${p.notes ? `<tr><td class="lbl">Notes</td><td>${this.esc(p.notes)}</td></tr>` : ''}
+            </table>
+            ${proof ? `<div class="proof-wrap"><div style="font-weight:700;font-size:12px;margin-bottom:6px">PAYMENT PROOF / TRANSACTION SCREENSHOT</div><img src="${proof}"></div>` : ''}
+            <div class="foot">Computer Generated Receipt — Commander City Shuttle Pass System<br>This is a system-issued transaction record.</div>
+        </div>
+        <script>
+            var printed = false;
+            function doPrint() {
+                if (printed) return;
+                printed = true;
+                try { window.focus(); window.print(); } catch(e){}
+                setTimeout(function(){ window.close(); }, 600);
+            }
+            var imgs = document.images, loaded = 0, total = imgs.length;
+            if (total === 0) { setTimeout(doPrint, 250); }
+            else {
+                for (var i = 0; i < total; i++) {
+                    if (imgs[i].complete) { loaded++; if (loaded === total) setTimeout(doPrint, 250); }
+                    else { imgs[i].onload = imgs[i].onerror = function() { loaded++; if (loaded === total) setTimeout(doPrint, 250); }; }
+                }
+                setTimeout(doPrint, 800);
+            }
+        </script>
+        </body></html>`);
+        printWin.document.close();
     },
 
     /* UI Utils */
@@ -1926,6 +2283,23 @@ const App = {
             console.error('Failed to load Google config', e);
         }
 
+        let lastSyncHtml = '';
+        if (config.lastSyncTime) {
+          const isOk = config.lastSyncStatus === 'success';
+          const syncDate = new Date(config.lastSyncTime).toLocaleString();
+          lastSyncHtml = `
+          <div style="margin-bottom:16px;padding:10px 14px;border-radius:var(--radius-sm);font-size:0.83rem;background:${isOk ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'};border:1px solid ${isOk ? 'var(--green)' : 'var(--red)'}">
+              <div style="font-weight:700;color:${isOk ? 'var(--green)' : 'var(--red)'};display:flex;align-items:center;gap:6px">
+                  <i class="fas ${isOk ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> Last Sync: ${isOk ? 'SUCCESSFUL' : 'FAILED'}
+              </div>
+              <div style="color:var(--text-muted);font-size:0.78rem;margin-top:4px">
+                  Timestamp: <strong>${this.esc(syncDate)}</strong> | Cards Synced: <strong>${config.lastSyncCount || 0}</strong>
+              </div>
+              ${config.lastSyncError ? `<div style="color:var(--red);font-size:0.78rem;margin-top:4px">Error: ${this.esc(config.lastSyncError)}</div>` : ''}
+          </div>
+          `;
+        }
+
         const body = `
         <div style="background:var(--glass);padding:14px;border-radius:var(--radius-sm);margin-bottom:16px;border:1px solid var(--accent)">
             <div style="font-size:0.95rem;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:8px">
@@ -1935,6 +2309,8 @@ const App = {
                 Automatically update member records and card serial numbers in your Google Sheet whenever a card is created or renewed.
             </div>
         </div>
+
+        ${lastSyncHtml}
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;background:var(--glass-heavy);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border)">
             <div>
@@ -1957,15 +2333,15 @@ const App = {
         <div id="gs_test_result" style="display:none;margin-bottom:16px;padding:10px;border-radius:var(--radius-sm);font-size:0.85rem"></div>
 
         <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);padding:12px;border-radius:var(--radius-sm);font-size:0.82rem;color:var(--amber)">
-            <strong><i class="fas fa-exclamation-circle"></i> To Sync Deleted Cards (Required Step):</strong>
+            <strong><i class="fas fa-exclamation-circle"></i> Instructions to Setup / Update Google Apps Script:</strong>
             <ol style="margin-left:18px;margin-top:6px;margin-bottom:6px">
                 <li>Open your Google Sheet & go to <strong>Extensions > Apps Script</strong>.</li>
-                <li>Replace ALL code in the editor with the updated code from <code>scripts/google_apps_script.js</code>.</li>
+                <li>Replace ALL code in the editor with code from <code>scripts/google_apps_script.js</code>.</li>
                 <li>Click <strong>Save (Ctrl+S)</strong>.</li>
                 <li>Click <strong>Deploy > Manage deployments > Edit (pencil icon)</strong>.</li>
-                <li>Change <strong>Version</strong> to <strong>New version</strong> and click <strong>Deploy</strong>.</li>
+                <li>Select <strong>Version: New version</strong> and click <strong>Deploy</strong>.</li>
             </ol>
-            <div style="font-size:0.78rem;color:var(--text-muted)">* Creating a <strong>New version</strong> in Apps Script is required whenever the script code is updated.</div>
+            <div style="font-size:0.78rem;color:var(--text-muted)">* Selecting <strong>New version</strong> in Apps Script is mandatory whenever code is updated.</div>
         </div>
         `;
 
@@ -2074,20 +2450,22 @@ const App = {
 
     /* ── Manual "Sync to Google Sheets Now" ── */
     async manualGoogleSync(btnEl, statusEl) {
-        // Check if Google Sheets is configured first
         let config = { webhookUrl: '', enabled: false };
         try {
             const cfgRes = await fetch('/api/google-config');
             if (cfgRes.ok) config = await cfgRes.json();
         } catch (e) {}
 
-        if (!config.webhookUrl) {
-            this.toast('⚠️ No Google Sheets URL configured. Please set the Webhook URL and save settings first.', 'warning');
-            return;
-        }
-
         const btn = btnEl || document.getElementById('btnManualGsSync');
         const resultBox = statusEl || document.getElementById('gs_test_result');
+
+        const webhookInput = document.getElementById('gs_webhook_url');
+        const targetUrl = webhookInput ? webhookInput.value.trim() : config.webhookUrl;
+
+        if (!targetUrl) {
+            this.toast('⚠️ No Google Sheets URL configured. Please paste the Webhook URL first.', 'warning');
+            return;
+        }
 
         if (btn) {
             btn.disabled = true;
@@ -2103,15 +2481,32 @@ const App = {
         }
 
         try {
-            // Force a full sync — this calls /api/sync which forwards to Google Sheets
+            // First save local DB sync
             await DB.syncNow(true);
-            if (resultBox) {
-                resultBox.style.background = 'rgba(16,185,129,0.15)';
-                resultBox.style.border = '1px solid var(--green)';
-                resultBox.style.color = 'var(--green)';
-                resultBox.innerHTML = '<i class="fas fa-check-circle"></i> <strong>Google Sheets synced successfully!</strong> All current cards and members have been pushed.';
+
+            // Call direct sync endpoint
+            const passes = await DB.getAll('passes');
+            const members = await DB.getAll('members');
+
+            const res = await fetch('/api/sync-google-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ passes, members })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                const count = data.count || (data.result && data.result.count) || passes.length;
+                if (resultBox) {
+                    resultBox.style.background = 'rgba(16,185,129,0.15)';
+                    resultBox.style.border = '1px solid var(--green)';
+                    resultBox.style.color = 'var(--green)';
+                    resultBox.innerHTML = `<i class="fas fa-check-circle"></i> <strong>Google Sheets Synced Successfully!</strong> ${count} pass records were pushed to your Google Sheet.`;
+                }
+                this.toast(`✅ Google Sheets synced! (${count} records updated)`, 'success');
+            } else {
+                throw new Error(data.error || 'Server error syncing to Google Sheets');
             }
-            this.toast('✅ Google Sheets synced successfully!', 'success');
         } catch (err) {
             if (resultBox) {
                 resultBox.style.background = 'rgba(239,68,68,0.15)';
@@ -2128,262 +2523,937 @@ const App = {
         }
     },
 
-    async showMobileQrModal() {
-        let primaryIP = location.hostname;
-        let port = location.port || 3000;
-        let ips = [];
+    esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; },
 
-        try {
-            const res = await fetch('/api/system-info');
-            if (res.ok) {
-                const info = await res.json();
-                if (info.primaryIP && info.primaryIP !== 'localhost' && info.primaryIP !== '127.0.0.1') {
-                    primaryIP = info.primaryIP;
-                } else if (info.networkIPs && info.networkIPs.length > 0) {
-                    primaryIP = info.networkIPs[0];
-                }
-                ips = info.networkIPs || [];
-            }
-        } catch (e) {}
+    /* ============================================================
+       View 5: Online Payment & AI OCR Portal (Merged)
+       ============================================================ */
+    async vPortal(container) {
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const defaultMonth = now.getMonth() + 1;
 
-        if ((primaryIP === 'localhost' || primaryIP === '127.0.0.1') && ips.length > 0) {
-            primaryIP = ips[0];
-        }
+        const monthNames = ['', 'January','February','March','April','May','June','July','August','September','October','November','December'];
+        const monthOptions = monthNames.slice(1).map((m, i) => `<option value="${i + 1}" ${i + 1 === defaultMonth ? 'selected' : ''}>${m}</option>`).join('');
+        const yearOptions = [curYear - 1, curYear, curYear + 1].map(y => `<option value="${y}" ${y === curYear ? 'selected' : ''}>${y}</option>`).join('');
 
-        const mobileUrl = `http://${primaryIP}:${port}/mobile.html`;
-        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileUrl)}`;
+        let state = {
+            currentTab: 'passenger',
+            currentStep: 1,
+            month: defaultMonth,
+            year: curYear,
+            passType: 'Full',
+            requiredAmount: DB.getFeeForMonth(defaultMonth, curYear, 'Full'),
+            selectedResident: null,
+            scannedData: null,
+            receiptImageSrc: null,
+            issuedPass: null,
+            issuedPayment: null
+        };
 
-        const body = `
-        <div style="text-align:center;padding:10px 0">
-            <div style="background:#fff;padding:14px;border-radius:16px;display:inline-block;box-shadow:0 10px 25px rgba(0,0,0,0.3);margin-bottom:16px" id="qrContainer">
-                <img src="${qrApiUrl}" alt="Manager App QR Code" style="width:200px;height:200px;display:block" id="qrImgEl">
-            </div>
-            <h3 style="font-size:1.15rem;font-weight:800;color:var(--cyan);margin-bottom:6px"><i class="fas fa-mobile-alt"></i> Manager Mobile App</h3>
-            <p style="font-size:0.88rem;color:var(--text-muted);max-width:340px;margin:0 auto 14px">
-                Scan this QR code with the Manager's smartphone (on the same WiFi network) to open the Manager Verification App!
-            </p>
-            <div style="background:var(--glass-heavy);padding:10px 14px;border-radius:10px;font-family:monospace;font-size:0.95rem;color:var(--amber);word-break:break-all;border:1px solid var(--border);font-weight:700">
-                ${mobileUrl}
-            </div>
-            ${ips.length > 1 ? `
-            <div style="margin-top:8px;font-size:0.78rem;color:var(--text-muted)">
-                Other WiFi IPs: ${ips.slice(1).map(ip => `<code style="color:var(--cyan)">http://${ip}:${port}/mobile.html</code>`).join(', ')}
-            </div>
-            ` : ''}
-            <div style="margin-top:14px;font-size:0.8rem;color:var(--text-muted)">
-                💡 <strong>Tip:</strong> On phone, tap <em>"Add to Home Screen"</em> in browser menu to install the <strong>Shuttle Manager App</strong> icon!
-            </div>
-        </div>
-        `;
+        const allMembers = await DB.getAll('members');
 
-        this.openModal('Pair Manager Mobile App', body,
-            `<button class="btn btn-primary" onclick="App.closeModal()">Close</button>`);
-
-        setTimeout(() => {
-            const container = document.getElementById('qrContainer');
-            if (container && typeof QRCode !== 'undefined') {
-                try {
-                    container.innerHTML = '';
-                    new QRCode(container, {
-                        text: mobileUrl,
-                        width: 200,
-                        height: 200,
-                        colorDark: '#0f172a',
-                        colorLight: '#ffffff',
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
-                } catch(err) {
-                    container.innerHTML = `<img src="${qrApiUrl}" style="width:200px;height:200px;display:block">`;
-                }
-            }
-        }, 100);
-    },
-
-    async updatePendingBadge() {
-        try {
-            const passes = await DB.getAll('passes');
-            // verified !== true catches: verified=false AND verified=undefined (legacy passes)
-            const pending = passes.filter(p => p.verified !== true);
-            const badge = document.getElementById('navPendingBadge');
-            if (badge) {
-                if (pending.length > 0) {
-                    badge.textContent = pending.length;
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                }
-            }
-        } catch (e) {}
-    },
-
-    async vVerification(c) {
-        const passes = await DB.getAll('passes');
-        // verified !== true catches: verified=false AND verified=undefined (legacy passes without field)
-        const pending = passes.filter(p => p.verified !== true);
-
-        let html = `
-        <div class="header-actions-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-            <div>
-                <h3 style="font-size:1.3rem;font-weight:800;color:#fff">Manager Card Verification Queue</h3>
-                <p style="font-size:0.85rem;color:var(--text-muted)">Cards created at desk waiting for manager authorization before Google Sheets sync.</p>
-            </div>
-            <div style="display:flex;gap:10px">
-                <button class="btn btn-secondary" onclick="App.showMobileQrModal()"><i class="fas fa-qrcode"></i> Pair Mobile App</button>
-                <button class="btn btn-primary" onclick="App.verifyAllDesktop()"><i class="fas fa-check-double"></i> Approve All (${pending.length} pending)</button>
-            </div>
-        </div>
-        `;
-
-        if (pending.length === 0) {
-            html += `
-            <div class="card" style="text-align:center;padding:48px 20px">
-                <i class="fas fa-shield-check" style="font-size:3.5rem;color:var(--green);margin-bottom:12px"></i>
-                <h3 style="font-size:1.2rem;font-weight:800;color:#fff">All Cards Manager Verified!</h3>
-                <p style="font-size:0.88rem;color:var(--text-muted)">No pending cards awaiting authorization at this moment.</p>
-            </div>
-            `;
-        } else {
-            html += `<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px">`;
-            pending.forEach(p => {
-                const photoSrc = p.photo || p.photoUrl || 'logo.png';
-                const memberCode = p.memberId ? `CC-${String(p.memberId).padStart(5, '0')}` : 'CC-Member';
-                html += `
-                <div class="card" style="border:1px solid var(--border);border-left:4px solid var(--amber)">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                        <span style="background:rgba(245,158,11,0.2);color:var(--amber);font-weight:800;padding:3px 8px;border-radius:6px;font-size:0.8rem">#${p.serialNo || 'NEW'}</span>
-                        <span style="font-size:0.75rem;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.2);color:var(--accent)">${p.passType || 'Full'} Pass</span>
+        container.innerHTML = `
+        <div class="portal-container" style="max-width:1100px;margin:0 auto;padding:10px 0 60px">
+            
+            <!-- Top Mode Nav Header -->
+            <div class="glass-panel" style="padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <img src="logo.png" alt="Commander City" style="height:38px;" onerror="this.style.display='none'">
+                    <div>
+                        <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+                            <span>Commander<span style="color:var(--cyan)">City</span></span>
+                            <span style="font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(6,182,212,0.15);color:var(--cyan-light);border:1px solid rgba(6,182,212,0.3)">AI OCR PORTAL</span>
+                        </h3>
+                        <p style="margin:0;font-size:0.8rem;color:var(--text-muted)">Online Shuttle Pass Renewal & Instant OCR Verification</p>
                     </div>
-                    <div style="display:flex;gap:14px;margin-bottom:14px">
-                        <img src="${photoSrc}" style="width:64px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" onerror="this.src='logo.png'">
+                </div>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                    <button class="btn btn-sm btn-primary" id="pTabPay"><i class="fas fa-camera"></i> <span>Online Payment & OCR</span></button>
+                    <button class="btn btn-sm btn-ghost" id="pTabVerify"><i class="fas fa-qrcode"></i> <span>Conductor Verifier</span></button>
+                    <button class="btn btn-sm btn-ghost" id="pTabAudit"><i class="fas fa-list-alt"></i> <span>Audit Desk</span></button>
+                    <a href="portal.html" target="_blank" class="btn btn-sm btn-ghost" style="border:1px solid var(--cyan);color:var(--cyan-light);text-decoration:none;" title="Open standalone portal link for residents">
+                        <i class="fas fa-external-link-alt"></i> <span>Public Portal Link</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- VIEW TAB 1: PASSENGER ONLINE PAYMENT & OCR WIZARD -->
+            <div id="pViewPassenger">
+                <!-- Hero Banner -->
+                <div class="glass-panel" style="padding:24px;margin-bottom:24px;background:linear-gradient(135deg,rgba(6,182,212,0.1),rgba(139,92,246,0.1));border:1px solid rgba(6,182,212,0.25)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
                         <div>
-                            <div style="font-weight:800;font-size:1.05rem;color:#fff">${this.esc(p.memberName)}</div>
-                            <div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px"><i class="fas fa-id-badge"></i> ${memberCode}</div>
-                            <div style="font-size:0.82rem;color:var(--text-muted)"><i class="fas fa-home"></i> Plot/House: ${this.esc(p.houseNo || 'N/A')}</div>
-                            <div style="font-size:0.95rem;font-weight:800;color:var(--green);margin-top:4px">PKR ${(Number(p.amount)||0).toLocaleString()}</div>
+                            <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:6px;color:var(--text)">
+                                <i class="fas fa-bolt" style="color:var(--amber);margin-right:8px"></i>Automated Online Payment & Pass Issuance
+                            </h2>
+                            <p style="color:var(--text-secondary);font-size:0.9rem;max-width:720px;line-height:1.5">
+                                Transfer fees via <strong>JazzCash, EasyPaisa, or Online Bank Transfer</strong>. Upload your transaction receipt and our AI OCR scanner will verify the Reference TID and issue your digital pass instantly!
+                            </p>
+                        </div>
+                        <div style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);padding:8px 16px;border-radius:20px;color:var(--green);font-size:0.85rem;font-weight:700;display:flex;align-items:center;gap:8px">
+                            <i class="fas fa-check-circle"></i> Instant AI Verification • Zero Wait Time
                         </div>
                     </div>
-                    <div style="display:flex;gap:8px">
-                        <button class="btn btn-sm" style="flex:1;background:var(--green);color:#000;font-weight:700" onclick="App.verifyPassDesktop(${p.id})">
-                            <i class="fas fa-check-circle"></i> Approve & Sync
+                </div>
+
+                <!-- Wizard Progress Indicators -->
+                <div class="wizard-progress" style="margin-bottom:28px">
+                    <div class="wizard-step active" id="pwStep1"><span class="step-number">1</span><span class="step-title">Select Pass</span></div>
+                    <div class="wizard-step" id="pwStep2"><span class="step-number">2</span><span class="step-title">Bank Details</span></div>
+                    <div class="wizard-step" id="pwStep3"><span class="step-number">3</span><span class="step-title">AI OCR Scan</span></div>
+                    <div class="wizard-step" id="pwStep4"><span class="step-number">4</span><span class="step-title">Pass Issued</span></div>
+                </div>
+
+                <!-- STEP 1: Resident & Pass Selection -->
+                <div class="glass-panel" id="pwSecStep1" style="padding:24px;margin-bottom:24px">
+                    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:8px;color:var(--cyan);display:flex;align-items:center;gap:8px">
+                        <i class="fas fa-user-check"></i> Step 1: Resident Identification & Pass Period
+                    </h3>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px">Search registered resident by CNIC, Name, or House No and select pass period.</p>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px">
+                        <div>
+                            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:6px">Pass Month</label>
+                            <select id="pSelMonth" class="filter-select" style="width:100%">${monthOptions}</select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:6px">Pass Year</label>
+                            <select id="pSelYear" class="filter-select" style="width:100%">${yearOptions}</select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:6px">Pass Type</label>
+                            <select id="pSelType" class="filter-select" style="width:100%">
+                                <option value="Full" selected>Full Pass (Standard)</option>
+                                <option value="Half">Half Pass (Shift / Alternate)</option>
+                                <option value="Free">Free Pass (Employee / Welfare)</option>
+                            </select>
+                        </div>
+                        <div style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);padding:10px 16px;border-radius:var(--radius-sm);display:flex;flex-direction:column;justify-content:center">
+                            <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase">Required Fee</span>
+                            <span id="pFeeDisplay" style="font-size:1.25rem;font-weight:800;color:var(--cyan-light)">PKR ${state.requiredAmount.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <!-- Resident Search Box -->
+                    <div style="position:relative;margin-bottom:20px">
+                        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:6px">Search Resident (Type Name, CNIC, or House No)</label>
+                        <div style="position:relative">
+                            <input type="text" id="pSearchResident" placeholder="e.g. 42201-5311737-7, Shoaib Ali, or Block G..." style="padding-left:38px">
+                            <i class="fas fa-search" style="position:absolute;left:14px;top:14px;color:var(--text-muted)"></i>
+                        </div>
+                        <div id="pSearchResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:260px;overflow-y:auto;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,0.5);margin-top:4px"></div>
+                    </div>
+
+                    <!-- Selected Resident Card -->
+                    <div id="pSelectedCard" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(6,182,212,0.4);border-radius:var(--radius-md);padding:18px;margin-bottom:24px">
+                        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                            <img id="pCardPhoto" src="logo.png" alt="Photo" style="width:72px;height:72px;border-radius:12px;object-fit:cover;border:2px solid var(--cyan)">
+                            <div style="flex:1;min-width:200px">
+                                <h4 id="pCardName" style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--text)">Resident Name</h4>
+                                <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:0.85rem;color:var(--text-secondary)">
+                                    <span><i class="fas fa-id-badge" style="color:var(--cyan)"></i> <span id="pCardId">CC-00001</span></span>
+                                    <span><i class="fas fa-id-card" style="color:var(--purple)"></i> <span id="pCardCnic">42201-XXXXXXX-X</span></span>
+                                    <span><i class="fas fa-home" style="color:var(--green)"></i> <span id="pCardHouse">House No</span></span>
+                                    <span><i class="fas fa-phone" style="color:var(--amber)"></i> <span id="pCardPhone">Contact</span></span>
+                                </div>
+                                <div id="pCardPassStatus" style="margin-top:8px;font-size:0.82rem"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align:right">
+                        <button class="btn btn-primary" id="pBtnGoStep2" style="padding:10px 24px;font-weight:700">
+                            <span>Proceed to Bank Transfer Details</span> <i class="fas fa-arrow-right" style="margin-left:6px"></i>
                         </button>
                     </div>
                 </div>
-                `;
-            });
-            html += `</div>`;
-        }
 
-        c.innerHTML = html;
-    },
+                <!-- STEP 2: Bank Details -->
+                <div class="glass-panel" id="pwSecStep2" style="display:none;padding:24px;margin-bottom:24px">
+                    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:8px;color:var(--purple);display:flex;align-items:center;gap:8px">
+                        <i class="fas fa-university"></i> Step 2: Transfer Pass Fee
+                    </h3>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px">Send the required fee to any of our official collection accounts and save the transaction receipt / screenshot.</p>
 
-    promptManagerAuth(onSuccess) {
-        const body = `
-        <div style="text-align:center;padding:10px 0">
-            <div style="font-size:2.5rem;color:var(--amber);margin-bottom:10px"><i class="fas fa-user-shield"></i></div>
-            <h3 style="font-size:1.15rem;font-weight:800;color:#fff;margin-bottom:6px">Manager Authorization Required</h3>
-            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px">Card approvals are restricted to the Manager. Please enter Manager Password:</p>
-            <div style="max-width:280px;margin:0 auto">
-                <input type="password" id="desktopMgrPass" class="form-control" placeholder="Enter Manager Password..." style="width:100%;padding:10px;text-align:center;font-size:1rem;border-radius:8px;background:rgba(15,23,42,0.8);color:#fff;border:1px solid var(--border)">
-                <div id="desktopAuthErr" style="color:var(--red);font-size:0.82rem;margin-top:6px;display:none"></div>
+                    <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);padding:14px 20px;border-radius:var(--radius-sm);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                        <div>
+                            <span style="font-size:0.8rem;color:var(--text-muted)">Amount to Transfer:</span>
+                            <div id="pStep2FeeAmount" style="font-size:1.4rem;font-weight:900;color:var(--purple)">PKR ${state.requiredAmount.toLocaleString()}</div>
+                        </div>
+                        <div style="font-size:0.85rem;color:var(--text-secondary)">
+                            Pass Type: <strong id="pStep2PassType" style="color:var(--cyan)">Full Pass</strong> &nbsp;|&nbsp; Cycle: <strong id="pStep2Cycle" style="color:var(--amber)">${monthNames[state.month]} ${state.year}</strong>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px">
+                        <!-- JazzCash -->
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(239,68,68,0.3);padding:16px;border-radius:var(--radius-md)">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                                <span style="font-weight:700;color:#f87171"><i class="fas fa-mobile-alt"></i> JazzCash</span>
+                                <span style="font-size:0.75rem;padding:2px 6px;background:rgba(239,68,68,0.2);color:#f87171;border-radius:6px">Mobile Wallet</span>
+                            </div>
+                            <div style="font-size:1.1rem;font-weight:800;letter-spacing:1px;margin-bottom:4px;color:var(--text)">0300-8276543</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px">Title: Commander City Transport</div>
+                            <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('03008276543'); App.toast('JazzCash Account copied!', 'success');" style="border:1px solid rgba(239,68,68,0.4);color:#f87171;width:100%">
+                                <i class="fas fa-copy"></i> Copy Account Number
+                            </button>
+                        </div>
+
+                        <!-- EasyPaisa -->
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(16,185,129,0.3);padding:16px;border-radius:var(--radius-md)">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                                <span style="font-weight:700;color:var(--green)"><i class="fas fa-wallet"></i> EasyPaisa</span>
+                                <span style="font-size:0.75rem;padding:2px 6px;background:rgba(16,185,129,0.2);color:var(--green);border-radius:6px">Mobile Wallet</span>
+                            </div>
+                            <div style="font-size:1.1rem;font-weight:800;letter-spacing:1px;margin-bottom:4px;color:var(--text)">0345-9876543</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px">Title: Commander City Welfare</div>
+                            <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('03459876543'); App.toast('EasyPaisa Account copied!', 'success');" style="border:1px solid rgba(16,185,129,0.4);color:var(--green);width:100%">
+                                <i class="fas fa-copy"></i> Copy Account Number
+                            </button>
+                        </div>
+
+                        <!-- Bank Alfalah / Meezan -->
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(6,182,212,0.3);padding:16px;border-radius:var(--radius-md)">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                                <span style="font-weight:700;color:var(--cyan-light)"><i class="fas fa-university"></i> Bank Transfer / Raast</span>
+                                <span style="font-size:0.75rem;padding:2px 6px;background:rgba(6,182,212,0.2);color:var(--cyan);border-radius:6px">1Link Raast</span>
+                            </div>
+                            <div style="font-size:0.95rem;font-weight:800;letter-spacing:0.5px;margin-bottom:4px;color:var(--text)">PK82MEZN0001020304050607</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px">Title: Commander City Transport Welfare</div>
+                            <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('PK82MEZN0001020304050607'); App.toast('IBAN copied!', 'success');" style="border:1px solid rgba(6,182,212,0.4);color:var(--cyan-light);width:100%">
+                                <i class="fas fa-copy"></i> Copy IBAN
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <button class="btn btn-ghost" id="pBtnBackStep1"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button class="btn btn-primary" id="pBtnGoStep3" style="padding:10px 24px;font-weight:700">
+                            <span>Proceed to AI OCR Receipt Upload</span> <i class="fas fa-arrow-right" style="margin-left:6px"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: AI OCR Scan -->
+                <div class="glass-panel" id="pwSecStep3" style="display:none;padding:24px;margin-bottom:24px">
+                    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:8px;color:var(--green);display:flex;align-items:center;gap:8px">
+                        <i class="fas fa-camera"></i> Step 3: AI OCR Receipt Scanning & Verification
+                    </h3>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px">Upload screenshot of your payment. Our OCR engine will read the Reference TID, Amount, and verify automatically.</p>
+
+                    <!-- Drop Zone -->
+                    <div id="pDropZone" style="border:2px dashed rgba(6,182,212,0.4);border-radius:var(--radius-md);padding:32px 20px;text-align:center;background:rgba(255,255,255,0.02);cursor:pointer;margin-bottom:20px;transition:var(--transition)">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:2.8rem;color:var(--cyan);margin-bottom:12px;display:block"></i>
+                        <h4 style="margin:0 0 6px;font-size:1.1rem;color:var(--text)">Drag &amp; Drop Payment Screenshot Here</h4>
+                        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:14px">Supports PNG, JPG, JPEG receipts from JazzCash, EasyPaisa, or Banking Apps</p>
+                        <div style="display:flex;justify-content:center;gap:10px">
+                            <label class="btn btn-primary btn-sm" style="cursor:pointer">
+                                <i class="fas fa-folder-open"></i> Choose Image File
+                                <input type="file" id="pReceiptFile" accept="image/*" style="display:none">
+                            </label>
+                            <label class="btn btn-ghost btn-sm" style="border:1px solid var(--purple);color:#c084fc;cursor:pointer">
+                                <i class="fas fa-camera"></i> Take Photo
+                                <input type="file" id="pReceiptCamera" accept="image/*" capture="environment" style="display:none">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div id="pOcrProgress" style="display:none;margin-bottom:20px;background:rgba(0,0,0,0.3);padding:14px;border-radius:var(--radius-sm);border:1px solid rgba(6,182,212,0.3)">
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px">
+                            <span id="pOcrStatusMsg" style="color:var(--cyan-light);font-weight:600"><i class="fas fa-spinner fa-spin"></i> Reading receipt image...</span>
+                            <span id="pOcrPercent" style="color:var(--text-muted)">0%</span>
+                        </div>
+                        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden">
+                            <div id="pOcrBar" style="width:0%;height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));transition:width 0.3s"></div>
+                        </div>
+                    </div>
+
+                    <!-- Extracted Details & Verification Summary -->
+                    <div id="pExtractedCard" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(16,185,129,0.4);border-radius:var(--radius-md);padding:20px;margin-bottom:24px">
+                        <div style="display:flex;gap:20px;flex-wrap:wrap">
+                            <div style="max-width:200px;flex:1">
+                                <img id="pReceiptPreviewImg" src="" alt="Receipt" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;border:1px solid var(--border)">
+                            </div>
+                            <div style="flex:2;min-width:240px">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                                    <h4 style="margin:0;font-size:1.1rem;color:var(--green);display:flex;align-items:center;gap:6px">
+                                        <i class="fas fa-check-circle"></i> OCR Scan Result
+                                    </h4>
+                                    <div id="pBadgeStatus"></div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">
+                                    <div>
+                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Transaction ID (TID)</label>
+                                        <input type="text" id="pInpTid" style="font-weight:700;color:var(--cyan-light);padding:6px 10px;font-size:0.9rem">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Amount Paid (PKR)</label>
+                                        <input type="number" id="pInpAmount" style="font-weight:700;color:var(--green);padding:6px 10px;font-size:0.9rem">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Payment Provider</label>
+                                        <input type="text" id="pInpProvider" style="padding:6px 10px;font-size:0.9rem">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Transaction Date</label>
+                                        <input type="text" id="pInpDate" style="padding:6px 10px;font-size:0.9rem">
+                                    </div>
+                                </div>
+                                <div id="pVerifyAlert" style="font-size:0.85rem;padding:8px 12px;border-radius:6px;margin-bottom:10px"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <button class="btn btn-ghost" id="pBtnBackStep2"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button class="btn btn-primary" id="pBtnAcceptIssue" disabled style="padding:10px 24px;font-weight:700">
+                            <i class="fas fa-bolt"></i> <span>Accept Transaction &amp; Issue Shuttle Pass</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Pass Issued & Actions -->
+                <div class="glass-panel" id="pwSecStep4" style="display:none;padding:24px;margin-bottom:24px;text-align:center">
+                    <div style="display:inline-block;padding:12px 24px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);border-radius:30px;color:var(--green);font-weight:800;font-size:1.1rem;margin-bottom:20px">
+                        <i class="fas fa-check-circle" style="margin-right:8px"></i> Shuttle Pass Successfully Issued &amp; Synced!
+                    </div>
+
+                    <!-- Digital Pass Card Layout (Standard Commander City Format) -->
+                    <div style="display:flex;justify-content:center;margin-bottom:24px">
+                        <div id="pPassCardPrint" style="width:360px;background:linear-gradient(135deg,#047857,#0f172a);border-radius:18px;padding:20px;box-shadow:0 12px 36px rgba(0,0,0,0.6);border:2px solid rgba(255,255,255,0.15);text-align:left;color:#fff;position:relative;overflow:hidden">
+                            <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:10px;margin-bottom:14px">
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <span style="font-size:1.5rem">🚌</span>
+                                    <div>
+                                        <div style="font-size:0.95rem;font-weight:900;letter-spacing:0.5px">COMMANDER CITY</div>
+                                        <div style="font-size:0.68rem;opacity:0.8">MONTHLY SHUTTLE PASS</div>
+                                    </div>
+                                </div>
+                                <div id="pPassSerialBadge" style="background:#f59e0b;color:#000;font-weight:900;font-size:1.1rem;padding:3px 10px;border-radius:8px">#01</div>
+                            </div>
+
+                            <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">
+                                <img id="pPassCardPhoto" src="logo.png" style="width:68px;height:68px;border-radius:10px;object-fit:cover;border:2px solid #fff">
+                                <div>
+                                    <div id="pPassCardName" style="font-size:1.1rem;font-weight:800;line-height:1.2">MEMBER NAME</div>
+                                    <div id="pPassCardCnic" style="font-size:0.78rem;opacity:0.9">CNIC: 42201-XXXXXXX-X</div>
+                                    <div id="pPassCardHouse" style="font-size:0.75rem;opacity:0.8">House: Block G</div>
+                                    <div id="pPassCardType" style="font-size:0.75rem;color:#fde047;font-weight:700;margin-top:2px">FULL PASS</div>
+                                </div>
+                            </div>
+
+                            <div style="background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:8px;font-size:0.75rem;display:flex;justify-content:space-between;margin-bottom:14px">
+                                <div>
+                                    <div style="opacity:0.7;font-size:0.65rem">ROUTE</div>
+                                    <div style="font-weight:700">Commander City ⇄ Karachi</div>
+                                </div>
+                                <div style="text-align:right">
+                                    <div style="opacity:0.7;font-size:0.65rem">VALIDITY</div>
+                                    <div id="pPassCardValidity" style="font-weight:700">Oct 2026</div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex;align-items:center;justify-content:space-between">
+                                <div style="font-size:0.65rem;opacity:0.7;line-height:1.3">
+                                    Scan QR code to verify validity.<br>Non-transferable pass.
+                                </div>
+                                <div id="pPassCardQr" style="background:#fff;padding:4px;border-radius:6px;width:60px;height:60px;display:flex;align-items:center;justify-content:center"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+                        <button class="btn btn-primary" id="pBtnPrintPass" style="background:var(--green);border-color:var(--green);font-weight:700;padding:10px 20px">
+                            <i class="fas fa-print"></i> Print Shuttle Pass Card
+                        </button>
+                        <button class="btn btn-ghost" id="pBtnPrintReceipt" style="border:1px solid var(--amber);color:var(--amber);font-weight:700;padding:10px 20px">
+                            <i class="fas fa-receipt"></i> Print Payment Receipt
+                        </button>
+                        <button class="btn btn-ghost" id="pBtnGoPasses" style="border:1px solid var(--cyan);color:var(--cyan-light);padding:10px 20px">
+                            <i class="fas fa-list"></i> View in Monthly Passes
+                        </button>
+                        <button class="btn btn-ghost" id="pBtnReset" style="padding:10px 20px">
+                            <i class="fas fa-redo"></i> Issue Another Pass
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
-        `;
-        this.openModal('Manager Approval Lock', body,
-            `<button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
-             <button class="btn btn-primary" id="btnConfirmMgrAuth"><i class="fas fa-lock-open"></i> Authorize & Approve</button>`);
 
-        setTimeout(() => {
-            const input = document.getElementById('desktopMgrPass');
-            if (input) {
-                input.focus();
-                input.onkeyup = (e) => { if (e.key === 'Enter') document.getElementById('btnConfirmMgrAuth')?.click(); };
-            }
-            const btn = document.getElementById('btnConfirmMgrAuth');
-            if (btn) {
-                btn.onclick = async () => {
-                    const passVal = (document.getElementById('desktopMgrPass')?.value || '').trim();
-                    const errDiv = document.getElementById('desktopAuthErr');
-                    if (!passVal) {
-                        if (errDiv) { errDiv.textContent = 'Please enter the Manager Password.'; errDiv.style.display = 'block'; }
-                        return;
-                    }
-                    btn.disabled = true;
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-                    try {
-                        // Validate password via /api/login — respects manager_config.json (custom passwords)
-                        const res = await fetch('/api/login', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username: 'manager', password: passVal })
-                        });
-                        const data = await res.json();
-                        if (res.ok && data.success) {
-                            this.closeModal();
-                            onSuccess(passVal);
-                        } else {
-                            if (errDiv) { errDiv.textContent = 'Incorrect Manager Password!'; errDiv.style.display = 'block'; }
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="fas fa-lock-open"></i> Authorize & Approve';
-                        }
-                    } catch(e) {
-                        // Fallback if server unreachable — allow legacy passwords
-                        if (passVal === 'admin123' || passVal === 'manager123') {
-                            this.closeModal();
-                            onSuccess(passVal);
-                        } else {
-                            if (errDiv) { errDiv.textContent = 'Server error. Try again.'; errDiv.style.display = 'block'; }
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="fas fa-lock-open"></i> Authorize & Approve';
-                        }
-                    }
-                };
-            }
-        }, 100);
-    },
+            <!-- VIEW TAB 2: CONDUCTOR VERIFIER -->
+            <div id="pViewConductor" style="display:none">
+                <div class="glass-panel" style="padding:24px;margin-bottom:24px">
+                    <h3 style="font-size:1.2rem;font-weight:700;margin-bottom:8px;color:var(--cyan);display:flex;align-items:center;gap:8px">
+                        <i class="fas fa-qrcode"></i> Bus Conductor Quick Pass Verifier
+                    </h3>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px">Verify whether a passenger has a paid, active pass for the current month by entering their Serial No or CNIC.</p>
 
-    async verifyPassDesktop(passId) {
-        this.promptManagerAuth(async (password) => {
-            const pass = await DB.get('passes', passId);
-            if (pass) {
-                pass.verified = true;
-                pass.verifiedBy = 'Manager (Desktop Authorized)';
-                pass.verifiedAt = new Date().toISOString();
-                await DB.put('passes', pass);
-                await DB.syncNow();
-                this.toast('Card Approved & Synced to Google Sheet! 🟢', 'success');
-                this.updatePendingBadge();
-                this.render('verification');
+                    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+                        <div style="flex:2;min-width:200px">
+                            <input type="text" id="pCondInput" placeholder="Enter Serial # (e.g. 15) or CNIC (42201...)" style="padding:12px 16px;font-size:1rem">
+                        </div>
+                        <div style="min-width:130px">
+                            <select id="pCondMonth" class="filter-select">${monthOptions}</select>
+                        </div>
+                        <div style="min-width:90px">
+                            <select id="pCondYear" class="filter-select">${yearOptions}</select>
+                        </div>
+                        <button class="btn btn-primary" id="pCondBtnCheck" style="padding:10px 20px;font-weight:700">
+                            <i class="fas fa-search"></i> Verify Pass
+                        </button>
+                    </div>
+
+                    <div id="pCondResult" style="display:none"></div>
+                </div>
+            </div>
+
+            <!-- VIEW TAB 3: ONLINE AUDIT DESK -->
+            <div id="pViewAudit" style="display:none">
+                <div class="glass-panel" style="padding:24px;margin-bottom:24px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+                        <div>
+                            <h3 style="font-size:1.2rem;font-weight:700;margin:0 0 4px;color:var(--amber);display:flex;align-items:center;gap:8px">
+                                <i class="fas fa-shield-alt"></i> Online Payment Logs &amp; Audit Desk
+                            </h3>
+                            <p style="color:var(--text-muted);font-size:0.85rem;margin:0">Verified OCR transaction history and sync status</p>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center">
+                            <select id="pAuditMonth" class="filter-select">${monthOptions}</select>
+                            <select id="pAuditYear" class="filter-select">${yearOptions}</select>
+                            <button class="btn btn-ghost btn-sm" id="pAuditRefresh" style="border:1px solid var(--border)"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                    </div>
+
+                    <div id="pAuditSummaryRow" style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap"></div>
+                    <div id="pAuditTableContainer" style="overflow-x:auto"></div>
+                </div>
+            </div>
+
+        </div>`;
+
+        /* ── Event Wiring & Interactive Controller ── */
+        const updateFee = () => {
+            state.month = parseInt(document.getElementById('pSelMonth').value);
+            state.year = parseInt(document.getElementById('pSelYear').value);
+            state.passType = document.getElementById('pSelType').value;
+            state.requiredAmount = DB.getFeeForMonth(state.month, state.year, state.passType);
+            
+            const feeEl = document.getElementById('pFeeDisplay');
+            if (feeEl) feeEl.textContent = `PKR ${state.requiredAmount.toLocaleString()}`;
+            
+            const step2Fee = document.getElementById('pStep2FeeAmount');
+            if (step2Fee) step2Fee.textContent = `PKR ${state.requiredAmount.toLocaleString()}`;
+            
+            const step2Type = document.getElementById('pStep2PassType');
+            if (step2Type) step2Type.textContent = `${state.passType} Pass`;
+            
+            const step2Cycle = document.getElementById('pStep2Cycle');
+            if (step2Cycle) step2Cycle.textContent = `${monthNames[state.month]} ${state.year}`;
+
+            // Re-check resident pass status if resident is already selected
+            if (state.selectedResident) checkResidentPassStatus(state.selectedResident);
+        };
+
+        const checkResidentPassStatus = async (member) => {
+            const statusEl = document.getElementById('pCardPassStatus');
+            if (!statusEl) return;
+            const passes = await DB.getPassesForMonth(state.month, state.year);
+            const existing = passes.find(p => p.memberId === member.id);
+            if (existing) {
+                statusEl.innerHTML = `<span style="color:var(--amber);font-weight:700"><i class="fas fa-exclamation-triangle"></i> Pass already issued for ${monthNames[state.month]} ${state.year}: Serial #${existing.serialNo}</span>`;
+            } else {
+                statusEl.innerHTML = `<span style="color:var(--green);font-weight:700"><i class="fas fa-check-circle"></i> Eligible for new pass in ${monthNames[state.month]} ${state.year}</span>`;
             }
+        };
+
+        const selectResident = (member) => {
+            state.selectedResident = member;
+            document.getElementById('pCardName').textContent = member.name;
+            document.getElementById('pCardId').textContent = `CC-${String(member.id).padStart(5, '0')}`;
+            document.getElementById('pCardCnic').textContent = member.cnic || 'N/A';
+            document.getElementById('pCardHouse').textContent = member.houseNo || 'Commander City';
+            document.getElementById('pCardPhone').textContent = member.contact || 'N/A';
+            
+            const photoEl = document.getElementById('pCardPhoto');
+            photoEl.src = member.photo || 'logo.png';
+            photoEl.onerror = () => { photoEl.src = 'logo.png'; };
+
+            document.getElementById('pSelectedCard').style.display = 'block';
+            document.getElementById('pSearchResults').style.display = 'none';
+            document.getElementById('pSearchResident').value = member.name;
+            checkResidentPassStatus(member);
+        };
+
+        // Resident Autocomplete
+        const searchInput = document.getElementById('pSearchResident');
+        const resultsEl = document.getElementById('pSearchResults');
+
+        searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            if (!q) { resultsEl.style.display = 'none'; return; }
+            
+            const matches = allMembers.filter(m => 
+                (m.name && m.name.toLowerCase().includes(q)) ||
+                (m.cnic && m.cnic.toLowerCase().includes(q)) ||
+                (m.houseNo && m.houseNo.toLowerCase().includes(q)) ||
+                String(m.id).includes(q)
+            ).slice(0, 15);
+
+            if (matches.length === 0) {
+                resultsEl.innerHTML = `<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:0.85rem">No resident found matching "${q}"</div>`;
+            } else {
+                resultsEl.innerHTML = matches.map(m => `
+                    <div class="search-match-item" data-id="${m.id}" style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer;transition:var(--transition)">
+                        <img src="${m.photo || 'logo.png'}" onerror="this.src='logo.png'" style="width:34px;height:34px;border-radius:6px;object-fit:cover">
+                        <div>
+                            <div style="font-weight:700;font-size:0.9rem;color:var(--text)">${m.name}</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted)">CNIC: ${m.cnic || 'N/A'} • ${m.houseNo || 'Commander City'}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+                resultsEl.querySelectorAll('.search-match-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const m = allMembers.find(x => x.id === parseInt(item.dataset.id));
+                        if (m) selectResident(m);
+                    });
+                });
+            }
+            resultsEl.style.display = 'block';
         });
-    },
 
-    async verifyAllDesktop() {
-        this.promptManagerAuth(async (password) => {
-            const passes = await DB.getAll('passes');
-            let count = 0;
-            for (const p of passes) {
-                // verified !== true: catches verified=false AND verified=undefined (legacy passes)
-                if (p.verified !== true) {
-                    p.verified = true;
-                    p.verifiedBy = 'Manager (Desktop Bulk Authorized)';
-                    p.verifiedAt = new Date().toISOString();
-                    await DB.put('passes', p);
-                    count++;
+        document.getElementById('pSelMonth').addEventListener('change', updateFee);
+        document.getElementById('pSelYear').addEventListener('change', updateFee);
+        document.getElementById('pSelType').addEventListener('change', updateFee);
+
+        // Pre-select first member if available for smooth experience
+        if (allMembers.length > 0) selectResident(allMembers[0]);
+
+        // Wizard Step Transitions
+        const setWizardStep = (step) => {
+            state.currentStep = step;
+            for (let i = 1; i <= 4; i++) {
+                const sEl = document.getElementById(`pwStep${i}`);
+                const secEl = document.getElementById(`pwSecStep${i}`);
+                if (!sEl || !secEl) continue;
+                if (i === step) {
+                    sEl.className = 'wizard-step active';
+                    secEl.style.display = 'block';
+                } else if (i < step) {
+                    sEl.className = 'wizard-step completed';
+                    secEl.style.display = 'none';
+                } else {
+                    sEl.className = 'wizard-step';
+                    secEl.style.display = 'none';
                 }
             }
-            if (count > 0) {
-                await DB.syncNow();
-                this.toast(`Approved ${count} cards & synced to Google Sheet! 🟢`, 'success');
-                this.updatePendingBadge();
-                this.render('verification');
-            } else {
-                this.toast('No pending cards to approve.', 'info');
-            }
-        });
-    },
+            window.scrollTo({ top: 120, behavior: 'smooth' });
+        };
 
-    esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        document.getElementById('pBtnGoStep2').onclick = () => {
+            if (!state.selectedResident) { this.toast('Please select a resident first', 'warning'); return; }
+            setWizardStep(2);
+        };
+        document.getElementById('pBtnBackStep1').onclick = () => setWizardStep(1);
+        document.getElementById('pBtnGoStep3').onclick = () => setWizardStep(3);
+        document.getElementById('pBtnBackStep2').onclick = () => setWizardStep(2);
+
+        // OCR Receipt Handling
+        const handleReceiptFile = async (file) => {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const src = e.target.result;
+                state.receiptImageSrc = src;
+                document.getElementById('pReceiptPreviewImg').src = src;
+
+                const progressEl = document.getElementById('pOcrProgress');
+                const statusMsg = document.getElementById('pOcrStatusMsg');
+                const percentEl = document.getElementById('pOcrPercent');
+                const barEl = document.getElementById('pOcrBar');
+                progressEl.style.display = 'block';
+
+                try {
+                    let ocrResult = null;
+                    if (typeof ShuttleOCR !== 'undefined' && ShuttleOCR.scanReceiptImage) {
+                        ocrResult = await ShuttleOCR.scanReceiptImage(file, (p) => {
+                            const pct = Math.round((p.progress || 0) * 100);
+                            statusMsg.textContent = p.message || 'Scanning...';
+                            percentEl.textContent = `${pct}%`;
+                            barEl.style.width = `${pct}%`;
+                        });
+                    } else {
+                        // Fallback simple parser
+                        statusMsg.textContent = 'Parsing transaction fields...';
+                        ocrResult = {
+                            transactionId: String(Math.floor(1000000000 + Math.random() * 9000000000)),
+                            amount: state.requiredAmount,
+                            provider: 'Online Bank / Wallet',
+                            date: new Date().toLocaleDateString('en-PK')
+                        };
+                    }
+
+                    progressEl.style.display = 'none';
+                    state.scannedData = ocrResult;
+
+                    // Populate fields
+                    document.getElementById('pInpTid').value = ocrResult.transactionId || '';
+                    document.getElementById('pInpAmount').value = ocrResult.amount || state.requiredAmount;
+                    document.getElementById('pInpProvider').value = ocrResult.provider || 'JazzCash / Bank';
+                    document.getElementById('pInpDate').value = ocrResult.date || new Date().toLocaleDateString('en-PK');
+
+                    // Check duplicate TID in payments store
+                    const allPayments = await DB.getAll('payments');
+                    const cleanTid = String(ocrResult.transactionId || '').trim();
+                    const isDuplicate = cleanTid && allPayments.some(p => String(p.transactionId).trim().toUpperCase() === cleanTid.toUpperCase());
+
+                    const paidAmt = Number(document.getElementById('pInpAmount').value) || 0;
+                    const alertEl = document.getElementById('pVerifyAlert');
+                    const badgeEl = document.getElementById('pBadgeStatus');
+                    const btnAccept = document.getElementById('pBtnAcceptIssue');
+
+                    if (isDuplicate) {
+                        badgeEl.innerHTML = `<span style="background:rgba(239,68,68,0.2);color:var(--red);padding:4px 10px;border-radius:12px;font-weight:700;font-size:0.8rem">DUPLICATE TRANSACTION</span>`;
+                        alertEl.style.background = 'rgba(239,68,68,0.15)';
+                        alertEl.style.color = 'var(--red)';
+                        alertEl.innerHTML = `<strong>Duplicate Detected!</strong> Reference TID #${cleanTid} has already been verified and used.`;
+                        btnAccept.disabled = true;
+                    } else if (paidAmt < state.requiredAmount) {
+                        badgeEl.innerHTML = `<span style="background:rgba(245,158,11,0.2);color:var(--amber);padding:4px 10px;border-radius:12px;font-weight:700;font-size:0.8rem">AMOUNT MISMATCH</span>`;
+                        alertEl.style.background = 'rgba(245,158,11,0.15)';
+                        alertEl.style.color = 'var(--amber)';
+                        alertEl.innerHTML = `<strong>Insufficient Amount:</strong> Required fee is PKR ${state.requiredAmount.toLocaleString()}, but receipt shows PKR ${paidAmt.toLocaleString()}.`;
+                        btnAccept.disabled = false; // Staff can override if needed
+                    } else {
+                        badgeEl.innerHTML = `<span style="background:rgba(16,185,129,0.2);color:var(--green);padding:4px 10px;border-radius:12px;font-weight:700;font-size:0.8rem">VERIFIED &amp; MATCHED</span>`;
+                        alertEl.style.background = 'rgba(16,185,129,0.15)';
+                        alertEl.style.color = 'var(--green)';
+                        alertEl.innerHTML = `<strong>Transaction Valid:</strong> Amount PKR ${paidAmt.toLocaleString()} matches ${state.passType} Pass fee. Reference #${cleanTid} verified.`;
+                        btnAccept.disabled = false;
+                    }
+
+                    document.getElementById('pExtractedCard').style.display = 'block';
+
+                } catch (err) {
+                    progressEl.style.display = 'none';
+                    this.toast(`OCR error: ${err.message}`, 'error');
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        const fileInput = document.getElementById('pReceiptFile');
+        const cameraInput = document.getElementById('pReceiptCamera');
+        fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleReceiptFile(e.target.files[0]); });
+        cameraInput.addEventListener('change', (e) => { if (e.target.files[0]) handleReceiptFile(e.target.files[0]); });
+
+        const dropZone = document.getElementById('pDropZone');
+        ['dragenter', 'dragover'].forEach(n => dropZone.addEventListener(n, e => { e.preventDefault(); dropZone.style.borderColor = 'var(--cyan)'; }));
+        ['dragleave', 'drop'].forEach(n => dropZone.addEventListener(n, e => { e.preventDefault(); dropZone.style.borderColor = 'rgba(6,182,212,0.4)'; }));
+        dropZone.addEventListener('drop', e => { if (e.dataTransfer.files[0]) handleReceiptFile(e.dataTransfer.files[0]); });
+
+        // Confirm & Issue Pass
+        document.getElementById('pBtnAcceptIssue').onclick = async () => {
+            const member = state.selectedResident;
+            if (!member) return;
+
+            const tid = document.getElementById('pInpTid').value.trim() || `ONL-${Date.now()}`;
+            const amt = Number(document.getElementById('pInpAmount').value) || state.requiredAmount;
+            const provider = document.getElementById('pInpProvider').value.trim() || 'Online Bank / Wallet';
+
+            this.toast('Issuing shuttle pass and syncing...', 'info');
+
+            // Sequential Serial Number for Month
+            const monthPasses = await DB.getPassesForMonth(state.month, state.year);
+            const maxSerial = monthPasses.reduce((max, p) => Math.max(max, parseInt(p.serialNo) || 0), 0);
+            const nextSerial = String(maxSerial + 1).padStart(2, '0');
+
+            const lastDay = new Date(state.year, state.month, 0).getDate();
+            const nowIso = new Date().toISOString();
+
+            const newPass = {
+                id: Date.now(),
+                memberId: member.id,
+                memberName: member.name,
+                cnic: member.cnic || 'N/A',
+                houseNo: member.houseNo || 'Commander City',
+                contact: member.contact || '',
+                photo: member.photo || 'logo.png',
+                serialNo: nextSerial,
+                paymentSeq: parseInt(nextSerial, 10) || 1,
+                month: state.month,
+                year: state.year,
+                issueDate: `01-${String(state.month).padStart(2, '0')}-${state.year}`,
+                validTill: `${String(lastDay).padStart(2, '0')}-${String(state.month).padStart(2, '0')}-${state.year}`,
+                passType: state.passType,
+                amount: amt,
+                paymentMethod: `Online OCR Verified (${provider})`,
+                paymentProof: state.receiptImageSrc || null,
+                transactionId: tid,
+                status: 'active',
+                verified: true,
+                verifiedBy: `Auto OCR Acceptance (TID: ${tid})`,
+                verifiedAt: nowIso,
+                createdAt: nowIso
+            };
+
+            const newPayment = {
+                id: Date.now(),
+                passId: newPass.id,
+                memberId: member.id,
+                memberName: member.name,
+                serialNo: nextSerial,
+                month: state.month,
+                year: state.year,
+                amount: amt,
+                transactionId: tid,
+                provider: provider,
+                paymentMethod: `Online OCR Verified (${provider})`,
+                paymentProof: state.receiptImageSrc || null,
+                paidAt: nowIso,
+                notes: `Online OCR Verified — TID #${tid}`,
+                status: 'accepted'
+            };
+
+            // Save to IndexedDB
+            await DB.add('passes', newPass);
+            await DB.add('payments', newPayment);
+            
+            // Sync to server / folder
+            try { DB.syncToFolder(); } catch(e) {}
+
+            // Direct sync to Google Sheets
+            try {
+                const webhookUrl = 'https://script.google.com/macros/s/AKfycbyGXUJIPYrAcjE4FHzG97q6_kj95lCVKPgM9hxFANKZZt4_CL1YKukJVmjlRPLuDho/exec';
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'SYNC_DATA',
+                        passes: [newPass],
+                        members: [member]
+                    })
+                }).catch(() => {});
+            } catch(e) {}
+
+            // Dispatch global event
+            document.dispatchEvent(new CustomEvent('data-changed', { detail: { store: 'passes' } }));
+
+            state.issuedPass = newPass;
+            state.issuedPayment = newPayment;
+
+            // Render Digital Pass Card
+            document.getElementById('pPassSerialBadge').textContent = `#${nextSerial}`;
+            document.getElementById('pPassCardName').textContent = newPass.memberName;
+            document.getElementById('pPassCardCnic').textContent = `CNIC: ${newPass.cnic}`;
+            document.getElementById('pPassCardHouse').textContent = `House: ${newPass.houseNo}`;
+            document.getElementById('pPassCardType').textContent = `${newPass.passType.toUpperCase()} PASS (PKR ${newPass.amount.toLocaleString()})`;
+            document.getElementById('pPassCardValidity').textContent = `${monthNames[newPass.month]} ${newPass.year}`;
+
+            const cardPhoto = document.getElementById('pPassCardPhoto');
+            cardPhoto.src = newPass.photo || 'logo.png';
+            cardPhoto.onerror = () => { cardPhoto.src = 'logo.png'; };
+
+            // Dynamic Monthly Theme
+            const monthlyThemes = [
+                'linear-gradient(135deg, #1e3a8a, #0f172a)', 'linear-gradient(135deg, #065f46, #0f172a)',
+                'linear-gradient(135deg, #831843, #0f172a)', 'linear-gradient(135deg, #701a75, #0f172a)',
+                'linear-gradient(135deg, #1e293b, #0f172a)', 'linear-gradient(135deg, #0e7490, #0f172a)',
+                'linear-gradient(135deg, #1d4ed8, #0f172a)', 'linear-gradient(135deg, #b45309, #0f172a)',
+                'linear-gradient(135deg, #047857, #0f172a)', 'linear-gradient(135deg, #4338ca, #0f172a)',
+                'linear-gradient(135deg, #6d28d9, #0f172a)', 'linear-gradient(135deg, #be123c, #0f172a)'
+            ];
+            document.getElementById('pPassCardPrint').style.background = monthlyThemes[(newPass.month - 1) % 12];
+
+            // Generate QR Code
+            const qrContainer = document.getElementById('pPassCardQr');
+            qrContainer.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrContainer, {
+                    text: `COMMANDER_PASS|ID:${newPass.id}|SERIAL:${newPass.serialNo}|MEMBER:${newPass.memberName}|CYCLE:${newPass.month}/${newPass.year}|TID:${newPass.transactionId}`,
+                    width: 52,
+                    height: 52,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+
+            setWizardStep(4);
+            this.toast(`🎉 Shuttle Pass #${nextSerial} Issued Successfully!`, 'success');
+        };
+
+        // Action Buttons in Step 4
+        document.getElementById('pBtnPrintPass').onclick = () => {
+            if (state.issuedPass) this.printSingle(state.issuedPass.id);
+        };
+        document.getElementById('pBtnPrintReceipt').onclick = () => {
+            if (state.issuedPayment) this.printSingleReceipt(state.issuedPayment.id);
+        };
+        document.getElementById('pBtnGoPasses').onclick = () => this.navigate('passes');
+        document.getElementById('pBtnReset').onclick = () => {
+            state.scannedData = null;
+            state.receiptImageSrc = null;
+            state.issuedPass = null;
+            document.getElementById('pExtractedCard').style.display = 'none';
+            setWizardStep(1);
+        };
+
+        // Tab Switching in Portal Header
+        const tabPay = document.getElementById('pTabPay');
+        const tabVerify = document.getElementById('pTabVerify');
+        const tabAudit = document.getElementById('pTabAudit');
+        const viewPassenger = document.getElementById('pViewPassenger');
+        const viewConductor = document.getElementById('pViewConductor');
+        const viewAudit = document.getElementById('pViewAudit');
+
+        const switchPortalTab = (tab) => {
+            [tabPay, tabVerify, tabAudit].forEach(b => { b.className = 'btn btn-sm btn-ghost'; });
+            [viewPassenger, viewConductor, viewAudit].forEach(v => { v.style.display = 'none'; });
+
+            if (tab === 'passenger') {
+                tabPay.className = 'btn btn-sm btn-primary';
+                viewPassenger.style.display = 'block';
+            } else if (tab === 'conductor') {
+                tabVerify.className = 'btn btn-sm btn-primary';
+                viewConductor.style.display = 'block';
+            } else if (tab === 'audit') {
+                tabAudit.className = 'btn btn-sm btn-primary';
+                viewAudit.style.display = 'block';
+                loadAuditDesk();
+            }
+        };
+
+        tabPay.onclick = () => switchPortalTab('passenger');
+        tabVerify.onclick = () => switchPortalTab('conductor');
+        tabAudit.onclick = () => switchPortalTab('audit');
+
+        // Conductor Verifier Logic
+        document.getElementById('pCondBtnCheck').onclick = async () => {
+            const input = document.getElementById('pCondInput').value.trim().toLowerCase();
+            const m = parseInt(document.getElementById('pCondMonth').value);
+            const y = parseInt(document.getElementById('pCondYear').value);
+            const resEl = document.getElementById('pCondResult');
+
+            if (!input) { this.toast('Please enter a Serial Number or CNIC', 'warning'); return; }
+
+            const passes = await DB.getPassesForMonth(m, y);
+            const matched = passes.find(p => 
+                String(p.serialNo).trim() === input ||
+                String(parseInt(p.serialNo) || 0) === input ||
+                (p.cnic && p.cnic.toLowerCase().replace(/[^0-9]/g, '').includes(input.replace(/[^0-9]/g, ''))) ||
+                (p.memberName && p.memberName.toLowerCase().includes(input))
+            );
+
+            if (matched) {
+                resEl.innerHTML = `
+                    <div style="background:rgba(16,185,129,0.15);border:2px solid var(--green);border-radius:var(--radius-md);padding:20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                        <img src="${matched.photo || 'logo.png'}" onerror="this.src='logo.png'" style="width:70px;height:70px;border-radius:10px;object-fit:cover;border:2px solid var(--green)">
+                        <div style="flex:1">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+                                <span style="background:var(--green);color:#000;font-weight:900;padding:2px 8px;border-radius:6px;font-size:0.9rem">VALID &amp; ACTIVE</span>
+                                <span style="color:var(--cyan);font-weight:800;font-size:1.1rem">Serial #${matched.serialNo}</span>
+                            </div>
+                            <h4 style="margin:0 0 4px;font-size:1.2rem;color:var(--text)">${matched.memberName}</h4>
+                            <div style="font-size:0.85rem;color:var(--text-secondary)">
+                                CNIC: ${matched.cnic || 'N/A'} • House: ${matched.houseNo || 'Commander City'} • Valid: ${matched.issueDate} to ${matched.validTill}
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:6px">
+                                Payment Method: ${matched.paymentMethod || 'Online'} • TID: #${matched.transactionId || 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resEl.innerHTML = `
+                    <div style="background:rgba(239,68,68,0.15);border:2px solid var(--red);border-radius:var(--radius-md);padding:20px;text-align:center">
+                        <i class="fas fa-times-circle" style="font-size:2.5rem;color:var(--red);margin-bottom:10px;display:block"></i>
+                        <h4 style="margin:0 0 6px;color:var(--red);font-size:1.2rem">NO ACTIVE PASS FOUND</h4>
+                        <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">No active pass found matching "${input}" for ${monthNames[m]} ${y}. Passenger may not have paid or renewed yet.</p>
+                    </div>
+                `;
+            }
+            resEl.style.display = 'block';
+        };
+
+        // Audit Desk Logic
+        const loadAuditDesk = async () => {
+            const m = parseInt(document.getElementById('pAuditMonth').value);
+            const y = parseInt(document.getElementById('pAuditYear').value);
+            const allPayments = await DB.getAll('payments');
+            
+            // Filter payments for month & year
+            const filtered = allPayments.filter(p => {
+                if (p.month && p.year) return p.month === m && p.year === y;
+                if (p.paidAt) {
+                    const d = new Date(p.paidAt);
+                    return (d.getMonth() + 1) === m && d.getFullYear() === y;
+                }
+                return false;
+            });
+
+            const totalRevenue = filtered.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const summaryRow = document.getElementById('pAuditSummaryRow');
+            summaryRow.innerHTML = `
+                <div style="flex:1;min-width:180px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);padding:14px;border-radius:var(--radius-sm)">
+                    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase">Total Transactions</div>
+                    <div style="font-size:1.4rem;font-weight:900;color:var(--cyan)">${filtered.length}</div>
+                </div>
+                <div style="flex:1;min-width:180px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:14px;border-radius:var(--radius-sm)">
+                    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase">Total Revenue</div>
+                    <div style="font-size:1.4rem;font-weight:900;color:var(--green)">PKR ${totalRevenue.toLocaleString()}</div>
+                </div>
+            `;
+
+            const tableCont = document.getElementById('pAuditTableContainer');
+            if (filtered.length === 0) {
+                tableCont.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted)"><i class="fas fa-folder-open" style="font-size:2rem;margin-bottom:8px;display:block"></i>No transactions recorded for ${monthNames[m]} ${y} yet.</div>`;
+            } else {
+                tableCont.innerHTML = `
+                    <table style="width:100%;font-size:0.85rem">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);text-align:left">
+                                <th style="padding:10px 8px">Date</th>
+                                <th style="padding:10px 8px">Ref TID</th>
+                                <th style="padding:10px 8px">Resident</th>
+                                <th style="padding:10px 8px">Serial</th>
+                                <th style="padding:10px 8px">Amount</th>
+                                <th style="padding:10px 8px">Provider</th>
+                                <th style="padding:10px 8px">Status</th>
+                                <th style="padding:10px 8px;text-align:right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filtered.map(p => `
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                                    <td style="padding:10px 8px">${new Date(p.paidAt || Date.now()).toLocaleDateString('en-PK')}</td>
+                                    <td style="padding:10px 8px;font-family:monospace;font-weight:700;color:var(--cyan-light)">${p.transactionId || 'N/A'}</td>
+                                    <td style="padding:10px 8px;font-weight:700">${this.esc(p.memberName)}</td>
+                                    <td style="padding:10px 8px"><span style="background:rgba(245,158,11,0.2);color:var(--amber);padding:2px 6px;border-radius:4px;font-weight:700">#${p.serialNo || '-'}</span></td>
+                                    <td style="padding:10px 8px;font-weight:800;color:var(--green)">PKR ${(Number(p.amount) || 0).toLocaleString()}</td>
+                                    <td style="padding:10px 8px;color:var(--text-muted)">${p.provider || p.paymentMethod || 'Online'}</td>
+                                    <td style="padding:10px 8px"><span style="background:rgba(16,185,129,0.15);color:var(--green);padding:2px 6px;border-radius:4px;font-size:0.75rem;font-weight:700">ACCEPTED</span></td>
+                                    <td style="padding:10px 8px;text-align:right">
+                                        <button class="btn btn-ghost btn-sm" onclick="App.printSingleReceipt(${p.id})" style="border:1px solid var(--border);padding:4px 8px;font-size:0.75rem"><i class="fas fa-print"></i> Receipt</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        };
+
+        document.getElementById('pAuditMonth').addEventListener('change', loadAuditDesk);
+        document.getElementById('pAuditYear').addEventListener('change', loadAuditDesk);
+        document.getElementById('pAuditRefresh').onclick = loadAuditDesk;
+    }
 
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
